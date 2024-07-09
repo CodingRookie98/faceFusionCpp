@@ -18,28 +18,17 @@ Inswapper::Inswapper(const std::shared_ptr<Ort::Env> &env) :
     m_inputHeight = m_inputNodeDims[0][2];
     m_inputWidth = m_inputNodeDims[0][3];
 
-    //    // Load ONNX model as a protobuf message
-    //    onnx::ModelProto model_proto;
-    //    std::ifstream input(modelPath, std::ios::binary);
-    //    if (!model_proto.ParseFromIstream(&input)) {
-    //        throw std::runtime_error("Failed to load model.");
-    //    }
-    //
-    //    // Access the initializer
-    //    const onnx::TensorProto &initializer = model_proto.graph().initializer(model_proto.graph().initializer_size() - 1);
-    //
-    //    // Convert initializer to an array
-    //    m_initializerArray.assign(initializer.float_data().begin(), initializer.float_data().end());
-
-    const int length = this->m_lenFeature * this->m_lenFeature;
-    this->m_initializerArray.resize(length);
-    FILE *fp = fopen("model_matrix.bin", "rb");
-    for (int i = 0; i < length; ++i) {
-        float tmp = 0;
-        fread(&tmp, sizeof(float), 1, fp);
-        this->m_initializerArray.at(i) = tmp;
+    // Load ONNX model as a protobuf message
+    onnx::ModelProto model_proto;
+    std::ifstream input(modelPath, std::ios::binary);
+    if (!model_proto.ParseFromIstream(&input)) {
+        throw std::runtime_error("Failed to load model.");
     }
-    fclose(fp); // 关闭文件
+
+    // Access the initializer
+    const onnx::TensorProto &initializer = model_proto.graph().initializer(model_proto.graph().initializer_size() - 1);
+    // Convert initializer to an array
+    m_initializerArray.assign(initializer.float_data().begin(), initializer.float_data().end());
 }
 
 std::shared_ptr<Typing::VisionFrame> Inswapper::applySwap(const Face &sourceFace, const Face &targetFace, const VisionFrame &targetFrame) {
@@ -89,8 +78,7 @@ std::shared_ptr<Typing::VisionFrame> Inswapper::applySwap(const Face &sourceFace
     for (int i = 0; i < m_lenFeature; ++i) {
         double sum = 0.0f;
         for (int j = 0; j < m_lenFeature; ++j) {
-            sum += static_cast<double>(sourceFace.embedding.at(j)) *
-                   static_cast<double>(m_initializerArray.at(j * m_lenFeature + i));
+            sum += static_cast<double>(sourceFace.embedding.at(j)) * static_cast<double>(m_initializerArray.at(j * m_lenFeature + i));
         }
         m_inputEmbeddingData.at(i) = static_cast<float>(sum / norm);
     }
