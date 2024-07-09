@@ -25,22 +25,17 @@ public:
 
     static std::vector<int> apply_nms(std::vector<BoundingBox> boxes, std::vector<float> confidences, const float nms_thresh);
     static std::vector<cv::Point2f> convertFaceLandmarks68To5(const std::vector<cv::Point2f> &faceLandmarks68);
+    
     static std::shared_ptr<std::tuple<Typing::VisionFrame, cv::Mat>>
     warpFaceByFaceLandmarks5(const Typing::VisionFrame &tempVisionFrame,
                              const Typing::FaceLandmark &faceLandmark5,
                              const std::string &warpTemplate,
                              const cv::Size &cropSize);
-    static std::shared_ptr<std::tuple<Typing::VisionFrame, cv::Mat>>
-    warpFaceByFaceLandmarks5(const Typing::VisionFrame &tempVisionFrame,
-                             const Typing::FaceLandmark &faceLandmark5,
-                             const std::vector<cv::Point2f> &warpTemplate,
-                             const cv::Size &cropSize);
+
     static cv::Mat estimateMatrixByFaceLandmark5(Typing::FaceLandmark landmark5,
                                                  const std::string &warpTemplate,
                                                  const cv::Size cropSize);
-    static cv::Mat estimateMatrixByFaceLandmark5(Typing::FaceLandmark landmark5,
-                                                 const std::vector<cv::Point2f> &warpTemplate,
-                                                 const cv::Size cropSize);
+
     static std::shared_ptr<std::tuple<cv::Mat, cv::Mat>> warpFaceByTranslation(const cv::Mat &tempVisionFrame,
                                                                                const std::vector<float> &translation,
                                                                                const float &scale,

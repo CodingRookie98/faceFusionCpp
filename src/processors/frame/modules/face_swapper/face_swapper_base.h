@@ -28,10 +28,6 @@ protected:
     getCropVisionFrameAndAffineMat(const Typing::VisionFrame &visionFrame,
                                    const Typing::FaceLandmark &faceLandmark,
                                    const std::string &modelTemplate, const cv::Size &size);
-    static std::shared_ptr<std::tuple<Typing::VisionFrame, cv::Mat>>
-    getCropVisionFrameAndAffineMat(const Typing::VisionFrame &visionFrame,
-                                   const Typing::FaceLandmark &faceLandmark,
-                                   const std::vector<cv::Point2f> &modelTemplate, const cv::Size &size);
     // 颜色空间转换(BGR to RGB), 标准化，归一化
     static std::shared_ptr<Typing::VisionFrame>
     prepareCropVisionFrame(const Typing::VisionFrame &visionFrame,

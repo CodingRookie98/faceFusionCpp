@@ -32,14 +32,6 @@ Inswapper::Inswapper(const std::shared_ptr<Ort::Env> &env) :
 }
 
 std::shared_ptr<Typing::VisionFrame> Inswapper::applySwap(const Face &sourceFace, const Face &targetFace, const VisionFrame &targetFrame) {
-    //    std::vector<cv::Point2f> normed_template;
-    //    normed_template.emplace_back(cv::Point2f(46.29459968, 51.69629952));
-    //    normed_template.emplace_back(cv::Point2f(81.53180032, 51.50140032));
-    //    normed_template.emplace_back(cv::Point2f(64.02519936, 71.73660032));
-    //    normed_template.emplace_back(cv::Point2f(49.54930048, 92.36550016));
-    //    normed_template.emplace_back(cv::Point2f(78.72989952, 92.20409984));
-    //    auto croppedTargetFrameAndAffineMat = Ffc::Inswapper::getCropVisionFrameAndAffineMat(
-    //        targetFrame, targetFace.faceLandMark5_68, normed_template, m_size);
     auto croppedTargetFrameAndAffineMat = Ffc::Inswapper::getCropVisionFrameAndAffineMat(
         targetFrame, targetFace.faceLandMark5_68, m_warpTemplate, m_size);
     // T

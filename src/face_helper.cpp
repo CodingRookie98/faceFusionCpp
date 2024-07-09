@@ -101,16 +101,7 @@ FaceHelper::warpFaceByFaceLandmarks5(const cv::Mat &tempVisionFrame,
     cv::warpAffine(tempVisionFrame, cropVision, affineMatrix, cropSize, cv::INTER_AREA, cv::BORDER_REPLICATE);
     return std::make_shared<std::tuple<VisionFrame, cv::Mat>>(cropVision, affineMatrix);
 }
-std::shared_ptr<std::tuple<Typing::VisionFrame, cv::Mat>>
-FaceHelper::warpFaceByFaceLandmarks5(const VisionFrame &tempVisionFrame,
-                                     const FaceLandmark &faceLandmark5,
-                                     const std::vector<cv::Point2f> &warpTemplate,
-                                     const cv::Size &cropSize) {
-    cv::Mat affineMatrix = estimateMatrixByFaceLandmark5(faceLandmark5, warpTemplate, cropSize);
-    VisionFrame cropVision;
-    cv::warpAffine(tempVisionFrame, cropVision, affineMatrix, cropSize, cv::INTER_AREA, cv::BORDER_REPLICATE);
-    return std::make_shared<std::tuple<VisionFrame, cv::Mat>>(cropVision, affineMatrix);
-}
+
 cv::Mat FaceHelper::estimateMatrixByFaceLandmark5(Typing::FaceLandmark landmark5,
                                                   const std::string &warpTemplate,
                                                   const cv::Size cropSize) {
@@ -120,13 +111,6 @@ cv::Mat FaceHelper::estimateMatrixByFaceLandmark5(Typing::FaceLandmark landmark5
         point.y *= (float)cropSize.height;
     }
     cv::Mat affineMatrix = cv::estimateAffinePartial2D(landmark5, normedWarpTemplate,
-                                                       cv::noArray(), cv::RANSAC, 100);
-    return affineMatrix;
-}
-cv::Mat FaceHelper::estimateMatrixByFaceLandmark5(Typing::FaceLandmark landmark5,
-                                                  const std::vector<cv::Point2f> &warpTemplate,
-                                                  const cv::Size cropSize) {
-    cv::Mat affineMatrix = cv::estimateAffinePartial2D(landmark5, warpTemplate,
                                                        cv::noArray(), cv::RANSAC, 100);
     return affineMatrix;
 }
