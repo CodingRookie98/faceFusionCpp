@@ -48,19 +48,10 @@ void FaceRecognizerArcW600kR50::preProcess(const Typing::VisionFrame &visionFram
     m_inputWidth = (int)m_inputNodeDims[0][2];
     m_inputHeight = (int)m_inputNodeDims[0][3];
 
-    // Todo
     // <0> is cropVision, <1> is affineMatrix
     auto cropVisionFrameAndAffineMat = FaceHelper::warpFaceByFaceLandmarks5(visionFrame, faceLandmark5_68,
                                                                             "arcface_112_v2",
                                                                             cv::Size(112, 112));
-//    std::vector<cv::Point2f> normed_template;
-//    normed_template.emplace_back(cv::Point2f(38.29459984, 51.69630032));
-//    normed_template.emplace_back(cv::Point2f(73.53180016, 51.50140016));
-//    normed_template.emplace_back(cv::Point2f(56.0252, 71.73660032));
-//    normed_template.emplace_back(cv::Point2f(41.54929968, 92.36549952));
-//    normed_template.emplace_back(cv::Point2f(70.72989952, 92.20409968));
-//    auto cropVisionFrameAndAffineMat = FaceHelper::warpFaceByFaceLandmarks5(visionFrame, faceLandmark5_68,
-//                                                                            normed_template, cv::Size(112, 112));
 
     std::vector<cv::Mat> bgrChannels(3);
     split(std::get<0>(*cropVisionFrameAndAffineMat), bgrChannels);

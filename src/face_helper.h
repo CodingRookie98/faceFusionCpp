@@ -19,12 +19,11 @@ namespace Ffc {
 using namespace Typing;
 class FaceHelper {
 public:
-    static std::unordered_map<std::string, std::vector<cv::Point2f>> WarpTemplateMap;
+    static std::unordered_map<std::string, std::vector<cv::Point2f>> m_warpTemplateMap;
     FaceHelper() = default;
     ~FaceHelper() = default;
 
-    static std::vector<int> apply_nms(std::vector<BoundingBox> boxes, std::vector<float> confidences, const float nms_thresh);
-    static std::vector<cv::Point2f> convertFaceLandmarks68To5(const std::vector<cv::Point2f> &faceLandmarks68);
+    static std::vector<int> applyNms(std::vector<BoundingBox> boxes, std::vector<float> confidences, const float nmsThresh);
     
     static std::shared_ptr<std::tuple<Typing::VisionFrame, cv::Mat>>
     warpFaceByFaceLandmarks5(const Typing::VisionFrame &tempVisionFrame,
@@ -32,7 +31,7 @@ public:
                              const std::string &warpTemplate,
                              const cv::Size &cropSize);
 
-    static cv::Mat estimateMatrixByFaceLandmark5(Typing::FaceLandmark landmark5,
+    static cv::Mat estimateMatrixByFaceLandmark5(const Typing::FaceLandmark& landmark5,
                                                  const std::string &warpTemplate,
                                                  const cv::Size cropSize);
 
@@ -42,10 +41,10 @@ public:
                                                                                const cv::Size &cropSize);
     static std::shared_ptr<Typing::FaceLandmark> convertFaceLandmark68To5(const Typing::FaceLandmark &faceLandmark68);
 
-    static cv::Mat pasteBack(cv::Mat temp_vision_frame, cv::Mat crop_vision_frame, cv::Mat crop_mask, cv::Mat affine_matrix);
+    static cv::Mat pasteBack(const cv::Mat&tempVisionFrame, const cv::Mat& cropVisionFrame, const cv::Mat& cropMask, const cv::Mat& affineMatrix);
 
 private:
-    static float GetIoU(const BoundingBox box1, const BoundingBox box2);
+    static float getIoU(const BoundingBox box1, const BoundingBox box2);
 };
 
 } // namespace Ffc

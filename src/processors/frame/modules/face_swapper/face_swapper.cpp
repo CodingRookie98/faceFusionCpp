@@ -28,7 +28,6 @@ void FaceSwapper::processImage(const std::vector<std::string> &sourcePaths,
     Ffc::Vision::writeImage(*resultFrame, outputPath);
 }
 
-// default mode many
 std::shared_ptr<Typing::VisionFrame> FaceSwapper::processFrame(const Typing::Faces &referenceFaces,
                                                                const Face &sourceFace,
                                                                const VisionFrame &targetFrame) {
@@ -63,6 +62,7 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::swapFace(const Face &sourceFac
             break;
         }
     }
+    
     auto realSwapper = std::dynamic_pointer_cast<Inswapper>(m_swapperBase);
     auto resultFrame = realSwapper->applySwap(sourceFace, targetFace, targetFrame);
     return resultFrame;

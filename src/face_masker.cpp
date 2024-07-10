@@ -11,7 +11,9 @@
 #include "face_masker.h"
 
 namespace Ffc {
-cv::Mat FaceMasker::createStaticBoxMask(const cv::Size &cropSize, const float faceMaskBlur, const Typing::Padding &faceMaskPadding) {
+std::shared_ptr<cv::Mat>
+FaceMasker::createStaticBoxMask(const cv::Size &cropSize, const float &faceMaskBlur,
+                                const Typing::Padding &faceMaskPadding) {
     int blurAmount = static_cast<int>(cropSize.width * 0.5 * faceMaskBlur);
     int blurArea = std::max(blurAmount / 2, 1);
 
@@ -31,6 +33,6 @@ cv::Mat FaceMasker::createStaticBoxMask(const cv::Size &cropSize, const float fa
         cv::GaussianBlur(boxMask, boxMask, cv::Size(0, 0), blurAmount * 0.25);
     }
 
-    return boxMask;
+    return std::make_shared<cv::Mat>(std::move(boxMask));
 }
 } // namespace Ffc

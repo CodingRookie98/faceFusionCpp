@@ -43,7 +43,8 @@ void FaceAnalyser::createAnalyser(const FaceAnalyser::Method &method) {
     }
 }
 
-std::shared_ptr<Typing::Face> FaceAnalyser::getAverageFace(const std::vector<Typing::VisionFrame> &visionFrames, const int &position) {
+std::shared_ptr<Typing::Face>
+FaceAnalyser::getAverageFace(const std::vector<Typing::VisionFrame> &visionFrames, const int &position) {
     Typing::Face averageFace;
     Typing::Faces faces{};
 
@@ -111,7 +112,8 @@ std::shared_ptr<Typing::Faces> FaceAnalyser::getManyFaces(const Typing::VisionFr
     return faces;
 }
 
-std::shared_ptr<Typing::FaceLandmark> FaceAnalyser::expandFaceLandmark68From5(const FaceLandmark &inputLandmark5) {
+std::shared_ptr<Typing::FaceLandmark>
+FaceAnalyser::expandFaceLandmark68From5(const FaceLandmark &inputLandmark5) {
     if (!m_analyserMap.contains(DetectLandmark68_5)) {
         createAnalyser(DetectLandmark68_5);
     }
@@ -132,11 +134,11 @@ FaceAnalyser::detectWithYoloFace(const VisionFrame &visionFrame, const cv::Size 
     return detectorYolo->detect(visionFrame, faceDetectorSize);
 }
 
-std::shared_ptr<Typing::Faces> FaceAnalyser::createFaces(
-    const Typing::VisionFrame &visionFrame,
-    const std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
-                                     std::vector<Typing::FaceLandmark>,
-                                     std::vector<Typing::Score>>> &input) {
+std::shared_ptr<Typing::Faces>
+FaceAnalyser::createFaces(const Typing::VisionFrame &visionFrame,
+                          const std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
+                                                           std::vector<Typing::FaceLandmark>,
+                                                           std::vector<Typing::Score>>> &input) {
     std::shared_ptr<Typing::Faces> resultFaces = std::make_shared<Typing::Faces>();
 
     if (Ffc::Globals::faceDetectorScore <= 0) {
@@ -148,7 +150,7 @@ std::shared_ptr<Typing::Faces> FaceAnalyser::createFaces(
     auto scores = new std::vector<Typing::Score>(std::get<2>(*input));
 
     float iouThreshold = Globals::faceDetectorModel == Globals::EnumFaceDetectModel::FD_Many ? 0.1 : 0.4;
-    auto keepIndices = Ffc::FaceHelper::apply_nms(*boundingBoxes, *scores, iouThreshold);
+    auto keepIndices = Ffc::FaceHelper::applyNms(*boundingBoxes, *scores, iouThreshold);
 
     for (const auto &index : keepIndices) {
         Typing::Face tempFace;
@@ -165,7 +167,7 @@ std::shared_ptr<Typing::Faces> FaceAnalyser::createFaces(
                 tempFace.faceLandmark68 = std::get<0>(*faceLandmark68AndScore);
                 tempFace.landmarkerScore = std::get<1>(*faceLandmark68AndScore);
                 if (std::get<1>(*faceLandmark68AndScore) > Ffc::Globals::faceLandmarkerScore) {
-                    tempFace.faceLandMark5_68 = FaceHelper::convertFaceLandmarks68To5(tempFace.faceLandmark68);
+                    tempFace.faceLandMark5_68 = *(FaceHelper::convertFaceLandmark68To5(tempFace.faceLandmark68));
                 }
             }
         }

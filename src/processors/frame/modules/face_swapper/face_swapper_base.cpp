@@ -25,13 +25,8 @@ FaceSwapperBase::prepareCropVisionFrame(const Typing::VisionFrame &visionFrame,
 
     cv::Mat processedBGR;
     cv::merge(bgrChannels, processedBGR);
-    cv::imwrite("./cropFrame.jpg", processedBGR);
 
-    // Convert BGR to RGB
-    cv::Mat processedRGB;
-    cv::cvtColor(processedBGR, processedRGB, cv::COLOR_BGR2RGB);
-
-    return std::make_shared<Typing::VisionFrame>(processedRGB);
+    return std::make_shared<Typing::VisionFrame>(processedBGR);
 }
 
 std::shared_ptr<std::tuple<Typing::VisionFrame, cv::Mat>>
@@ -50,7 +45,7 @@ FaceSwapperBase::getCropMaskList(const Typing::VisionFrame &visionFrame,
     if (Globals::faceMaskerTypeSet.contains(Globals::enumFaceMaskerType::FM_Box)) {
         auto boxMask = FaceMasker::createStaticBoxMask(cropSize,
                                                        Globals::faceMaskBlur, Globals::faceMaskPadding);
-        cropMaskList->push_back(boxMask);
+        cropMaskList->push_back(*boxMask);
     } else if (Globals::faceMaskerTypeSet.contains(Globals::enumFaceMaskerType::FM_Occlusion)) {
         // todo
     } else if (Globals::faceMaskerTypeSet.contains(Globals::enumFaceMaskerType::FM_Region)) {

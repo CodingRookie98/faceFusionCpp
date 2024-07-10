@@ -20,8 +20,8 @@ class FaceMasker {
 public:
     FaceMasker() = default;
     ~FaceMasker() = default;
-    static cv::Mat createStaticBoxMask(const cv::Size &cropSize, const float faceMaskBlur,
-                                       const Typing::Padding &faceMaskPadding);
+    static std::shared_ptr<cv::Mat> createStaticBoxMask(const cv::Size &cropSize, const float &faceMaskBlur,
+                                                        const Typing::Padding &faceMaskPadding);
 };
 
 } // namespace Ffc
