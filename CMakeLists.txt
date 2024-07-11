@@ -13,6 +13,7 @@ add_subdirectory(src)
 
 find_package(OpenCV REQUIRED)
 find_package(ONNX CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 target_link_directories(${ProgramName} PRIVATE
         ${VCPKG_INSTALLED_DIR}/x64-windows/lib
@@ -20,9 +21,10 @@ target_link_directories(${ProgramName} PRIVATE
 
 target_link_libraries(${ProgramName} PRIVATE
         ${OpenCV_LIBS}
-
 )
 # 链接 ONNX Runtime库
 target_link_libraries(${ProgramName} PRIVATE onnxruntime)
 
 target_link_libraries(${ProgramName} PRIVATE onnx onnx_proto)
+
+target_link_libraries(${ProgramName} PRIVATE nlohmann_json::nlohmann_json)

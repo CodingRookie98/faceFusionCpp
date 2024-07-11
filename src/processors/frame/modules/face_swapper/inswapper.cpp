@@ -29,6 +29,19 @@ Inswapper::Inswapper(const std::shared_ptr<Ort::Env> &env) :
     const onnx::TensorProto &initializer = model_proto.graph().initializer(model_proto.graph().initializer_size() - 1);
     // Convert initializer to an array
     m_initializerArray.assign(initializer.float_data().begin(), initializer.float_data().end());
+    
+    // Todo
+    m_modelsJson = std::make_shared<nlohmann::json>();
+    std::ifstream file("./modelsInfo.json");
+    if (file.is_open()) {
+        file >> *m_modelsJson;
+        file.close();
+    }
+    auto templateName = m_modelsJson->at("faceSwapperModels").at("inswapper_128").at("template");
+    auto fvec = m_modelsJson->at("faceHelper").at("warpTemplate").at(templateName).get<std::vector<float>>();
+    for (int i = 0; i < fvec.size(); i += 2) {
+        m_warpTemplate.emplace_back(fvec.at(i), fvec.at(i + 1));
+    }
 }
 
 std::shared_ptr<Typing::VisionFrame> Inswapper::applySwap(const Face &sourceFace, const Face &targetFace, const VisionFrame &targetFrame) {

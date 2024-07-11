@@ -13,6 +13,7 @@
 
 #include <onnx/onnx_pb.h>
 #include <fstream>
+#include <nlohmann/json.hpp>
 #include "face_swapper_base.h"
 #include "face_swapper_session.h"
 
@@ -27,9 +28,7 @@ public:
                                                    const Typing::VisionFrame &targetFrame);
 
 private:
-    void preProcess();
-
-    const std::string m_warpTemplate = "arcface_128_v2";
+//    const std::string m_warpTemplate = "arcface_128_v2";
     const cv::Size m_size = cv::Size(128, 128);
     const std::vector<float> m_mean = {0.0, 0.0, 0.0, 0.0};
     const std::vector<float> m_standardDeviation = {1.0, 1.0, 1.0};
@@ -39,7 +38,8 @@ private:
     const int m_lenFeature = 512;
     std::vector<float> m_inputImageData;
     std::vector<float> m_inputEmbeddingData;
-    
+    std::shared_ptr<nlohmann::json> m_modelsJson = nullptr;
+    std::vector<cv::Point2f> m_warpTemplate;
 };
 
 } // namespace Ffc

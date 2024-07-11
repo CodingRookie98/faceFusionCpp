@@ -33,7 +33,7 @@ void FaceSwapperSession::createSession(const std::string &modelPath) {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     // windows
     std::wstring wideModelPath(modelPath.begin(), modelPath.end());
-    m_session = std::make_shared<Ort::Session>(Ort::Session(*m_env, wideModelPath.c_str(), m_sessionOptions));
+    m_session = std::make_shared<Ort::Session>(*m_env, wideModelPath.c_str(), m_sessionOptions);
 #else
     // linux
     m_session = std::make_shared<Ort::Session>(Ort::Session(*m_env, modelPath.c_str(), m_sessionOptions));

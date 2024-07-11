@@ -56,6 +56,11 @@ enum EnumFaceSwapperModel {
     InSwapper_128_fp16,
 };
 static EnumFaceSwapperModel faceSwapperModel = InSwapper_128;
+enum EnumFaceEnhancerModel {
+    FE_Gfpgan_14,
+    FE_CodeFormer,
+};
+static EnumFaceEnhancerModel faceEnhancerModel = FE_Gfpgan_14;
 } // namespace Ffc::Globals
 
 

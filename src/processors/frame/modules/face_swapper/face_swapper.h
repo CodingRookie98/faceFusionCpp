@@ -30,6 +30,7 @@ public:
     void processImage(const std::vector<std::string> &sourcePaths,
                       const std::string &targetPath,
                       const std::string &outputPath);
+    void setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnalyser);
     
  private:
     std::shared_ptr<Typing::VisionFrame> processFrame(const Typing::Faces &referenceFaces,
@@ -38,7 +39,7 @@ public:
     std::shared_ptr<Typing::VisionFrame> swapFace(const Typing::Face &sourceFace, const Typing::Face &targetFace,
                                                   const Typing::VisionFrame &targetFrame);
     
-    std::unique_ptr<FaceAnalyser> m_faceAnalyser;
+    std::shared_ptr<FaceAnalyser> m_faceAnalyser = nullptr;
     std::shared_ptr<Ort::Env> m_env;
     std::shared_ptr<FaceSwapperBase> m_swapperBase;
     Globals::EnumFaceSwapperModel m_faceSwapperModel = Globals::faceSwapperModel;

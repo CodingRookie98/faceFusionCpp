@@ -12,8 +12,9 @@
 
 namespace Ffc {
 FaceSwapper::FaceSwapper(const std::shared_ptr<Ort::Env> &env) {
-    m_faceAnalyser = std::make_unique<Ffc::FaceAnalyser>(env);
     m_env = env;
+    // Todo
+    m_faceAnalyser = std::make_shared<FaceAnalyser>(m_env);
 }
 
 void FaceSwapper::processImage(const std::vector<std::string> &sourcePaths,
@@ -31,6 +32,10 @@ void FaceSwapper::processImage(const std::vector<std::string> &sourcePaths,
 std::shared_ptr<Typing::VisionFrame> FaceSwapper::processFrame(const Typing::Faces &referenceFaces,
                                                                const Face &sourceFace,
                                                                const VisionFrame &targetFrame) {
+    if (m_faceAnalyser == nullptr) {
+        throw std::runtime_error("Face analyser is not set");
+    }
+    
     std::shared_ptr<Typing::VisionFrame> resultFrame = std::make_shared<Typing::VisionFrame>(targetFrame);
     if (Globals::faceSelectorMode == Globals::EnumFaceSelectorMode::FS_Many) {
         auto manyTargetFaces = m_faceAnalyser->getManyFaces(targetFrame);
@@ -66,6 +71,10 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::swapFace(const Face &sourceFac
     auto realSwapper = std::dynamic_pointer_cast<Inswapper>(m_swapperBase);
     auto resultFrame = realSwapper->applySwap(sourceFace, targetFace, targetFrame);
     return resultFrame;
+}
+
+void FaceSwapper::setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnalyser) {
+    m_faceAnalyser = faceAnalyser;
 }
 
 } // namespace Ffc

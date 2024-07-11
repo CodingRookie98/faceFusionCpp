@@ -30,13 +30,12 @@ FaceSwapperBase::prepareCropVisionFrame(const Typing::VisionFrame &visionFrame,
 }
 
 std::shared_ptr<std::tuple<Typing::VisionFrame, cv::Mat>>
-FaceSwapperBase::getCropVisionFrameAndAffineMat(const Typing::VisionFrame &visionFrame,
-                                                const Typing::FaceLandmark &faceLandmark,
-                                                const std::string &modelTemplate,
+FaceSwapperBase::getCropVisionFrameAndAffineMat(const VisionFrame &visionFrame,
+                                                const FaceLandmark &faceLandmark,
+                                                const std::vector<cv::Point2f> &modelTemplate,
                                                 const cv::Size &size) {
     return FaceHelper::warpFaceByFaceLandmarks5(visionFrame, faceLandmark, modelTemplate, size);
 }
-
 std::shared_ptr<std::list<cv::Mat>>
 FaceSwapperBase::getCropMaskList(const Typing::VisionFrame &visionFrame,
                                  const cv::Size &cropSize, const float &faceMaskBlur,
