@@ -35,4 +35,8 @@ FaceMasker::createStaticBoxMask(const cv::Size &cropSize, const float &faceMaskB
 
     return std::make_shared<cv::Mat>(std::move(boxMask));
 }
+
+FaceMasker::FaceMasker(const std::shared_ptr<Ort::Env> &env) {
+    m_env = env;
+}
 } // namespace Ffc

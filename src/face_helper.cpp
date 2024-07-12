@@ -150,8 +150,9 @@ FaceHelper::convertFaceLandmark68To5(const FaceLandmark &faceLandmark68) {
     return std::make_shared<Typing::FaceLandmark>(std::move(faceLandmark5_68));
 }
 
-cv::Mat FaceHelper::pasteBack(const cv::Mat &tempVisionFrame, const cv::Mat &cropVisionFrame,
-                              const cv::Mat &cropMask, const cv::Mat &affineMatrix) {
+std::shared_ptr<Typing::VisionFrame>
+FaceHelper::pasteBack(const cv::Mat &tempVisionFrame, const cv::Mat &cropVisionFrame,
+                      const cv::Mat &cropMask, const cv::Mat &affineMatrix) {
     cv::Mat inverseMatrix;
     cv::invertAffineTransform(affineMatrix, inverseMatrix);
     cv::Mat inverseMask;
@@ -179,6 +180,6 @@ cv::Mat FaceHelper::pasteBack(const cv::Mat &tempVisionFrame, const cv::Mat &cro
     cv::Mat pasteVisionFrame;
     merge(channelMats, pasteVisionFrame);
     pasteVisionFrame.convertTo(pasteVisionFrame, CV_8UC3);
-    return pasteVisionFrame;
+    return std::make_shared<Typing::VisionFrame>(std::move(pasteVisionFrame));
 }
 } // namespace Ffc

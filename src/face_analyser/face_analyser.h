@@ -14,7 +14,6 @@
 #include <opencv2/imgproc.hpp>
 #include <onnxruntime_cxx_api.h>
 #include <unordered_map>
-#include "utils.h"
 #include "typing.h"
 #include "analyser_base.h"
 #include "face_detector_yolo.h"

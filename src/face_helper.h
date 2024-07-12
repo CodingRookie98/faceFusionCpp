@@ -49,7 +49,7 @@ public:
                                                                                const cv::Size &cropSize);
     static std::shared_ptr<Typing::FaceLandmark> convertFaceLandmark68To5(const Typing::FaceLandmark &faceLandmark68);
 
-    static cv::Mat pasteBack(const cv::Mat &tempVisionFrame, const cv::Mat &cropVisionFrame, const cv::Mat &cropMask, const cv::Mat &affineMatrix);
+    static std::shared_ptr<Typing::VisionFrame> pasteBack(const cv::Mat &tempVisionFrame, const cv::Mat &cropVisionFrame, const cv::Mat &cropMask, const cv::Mat &affineMatrix);
 
 private:
     static float getIoU(const BoundingBox &box1, const BoundingBox &box2);

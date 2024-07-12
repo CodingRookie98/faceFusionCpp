@@ -34,7 +34,6 @@ typedef struct Face {
     FaceLandmark faceLandmark68;
     FaceLandmark faceLandMark5_68;
     FaceLandmark faceLandmark68_5;
-    
     Embedding embedding;
     Embedding normedEmbedding;
     Score detectorScore;

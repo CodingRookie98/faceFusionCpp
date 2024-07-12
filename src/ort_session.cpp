@@ -1,34 +1,27 @@
 /**
  ******************************************************************************
- * @file           : face_swapper_session.cpp
+ * @file           : ort_session.cpp
  * @author         : CodingRookie
  * @brief          : None
  * @attention      : None
- * @date           : 24-7-9
+ * @date           : 24-7-12
  ******************************************************************************
  */
 
-#include "face_swapper_session.h"
+#include "ort_session.h"
 
 namespace Ffc {
-FaceSwapperSession::FaceSwapperSession(const std::shared_ptr<Ort::Env> &env, const std::string &modelPath) {
+OrtSession::OrtSession(const std::shared_ptr<Ort::Env> &env) {
     m_env = env;
     m_sessionOptions = Ort::SessionOptions();
     m_sessionOptions.SetGraphOptimizationLevel(ORT_ENABLE_BASIC);
-    createSession(modelPath);
+    m_cudaProviderOptions = std::make_shared<OrtCUDAProviderOptions>();
 }
 
-void FaceSwapperSession::createSession(const std::string &modelPath) {
+void OrtSession::createSession(const std::string &modelPath) {
     // CUDA 加速
-    try {
-        Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(m_sessionOptions, 0));
-    } catch (const Ort::Exception &e) {
-        std::cerr << "ONNX Runtime exception caught: " << e.what() << std::endl;
-    } catch (const std::exception &e) {
-        std::cerr << "Standard exception caught: " << e.what() << std::endl;
-    } catch (...) {
-        std::cerr << "Unknown exception caught" << std::endl;
-    }
+    m_cudaProviderOptions->device_id = 0;
+    m_sessionOptions.AppendExecutionProvider_CUDA(*m_cudaProviderOptions);
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     // windows

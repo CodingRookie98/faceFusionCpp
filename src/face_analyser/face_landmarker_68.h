@@ -13,7 +13,6 @@
 
 #include <opencv2/imgproc.hpp>
 #include "analyser_base.h"
-#include "utils.h"
 #include "typing.h"
 #include "face_analyser_session.h"
 #include "face_helper.h"

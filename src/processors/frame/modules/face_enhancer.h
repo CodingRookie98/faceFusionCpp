@@ -18,11 +18,15 @@
 #include "globals.h"
 #include "face_analyser/face_analyser.h"
 #include "face_masker.h"
+#include "ort_session.h"
 
 namespace Ffc {
-class FaceEnhancer {
+class FaceEnhancer : public OrtSession {
 public:
-    FaceEnhancer(const std::shared_ptr<Ort::Env> &env);
+    FaceEnhancer(const std::shared_ptr<Ort::Env> &env,
+                 const std::shared_ptr<FaceAnalyser> &faceAnalyser,
+                 const std::shared_ptr<FaceMasker> &faceMasker,
+                 const std::shared_ptr<nlohmann::json> &modelsInfoJson);
     ~FaceEnhancer() = default;
 
     void processImage(const std::string &targetPath, const std::string &outputPath);
@@ -32,27 +36,21 @@ private:
     void init();
     std::shared_ptr<Typing::VisionFrame> processFrame(const Typing::Faces &referenceFaces,
                                                       const Typing::VisionFrame &targetFrame);
-    std::shared_ptr<Typing::VisionFrame > enhanceFace(const Typing::Face &targetFace,
-                                                       const Typing::VisionFrame &tempVisionFrame);
- 
-    std::shared_ptr<Ort::Env> m_env;
-    std::shared_ptr<Ort::Session> m_session;
-    Ort::SessionOptions m_sessionOptions;
-    std::shared_ptr<OrtCUDAProviderOptions> m_cudaProviderOptions = nullptr;
-    std::vector<const char *> m_inputNames;
-    std::vector<const char *> m_outputNames;
-    std::vector<Ort::AllocatedStringPtr> m_inputNamesPtrs;
-    std::vector<Ort::AllocatedStringPtr> m_outputNamesPtrs;
-    std::vector<std::vector<int64_t>> m_inputNodeDims;  // >=1 outputs
-    std::vector<std::vector<int64_t>> m_outputNodeDims; // >=1 outputs
-    Ort::MemoryInfo m_memoryInfo = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPU);
+    std::shared_ptr<Typing::VisionFrame> enhanceFace(const Typing::Face &targetFace,
+                                                     const Typing::VisionFrame &tempVisionFrame);
+    static std::shared_ptr<Typing::VisionFrame> blendFrame(const Typing::VisionFrame &targetFrame,
+                                                    const Typing::VisionFrame &pasteVisionFrame);
+    std::shared_ptr<Typing::VisionFrame> applyEnhance(const Typing::Face &targetFace,
+                                                      const Typing::VisionFrame &tempVisionFrame);
+
     int m_inputHeight;
     int m_inputWidth;
     std::vector<float> m_inputImageData;
-    std::shared_ptr<nlohmann::json> m_modelsJson;
     std::shared_ptr<FaceAnalyser> m_faceAnalyser;
+    std::shared_ptr<FaceMasker> m_faceMasker;
+    std::shared_ptr<nlohmann::json> m_modelsJson;
     std::string m_modelName;
-    std::vector<cv::Point2f > m_warpTemplate;
+    std::vector<cv::Point2f> m_warpTemplate;
     cv::Size m_size;
     std::shared_ptr<Globals::EnumFaceEnhancerModel> m_faceEnhancerModel;
 };

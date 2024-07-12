@@ -14,78 +14,21 @@
 #include <fstream>
 
 namespace Ffc {
-FaceEnhancer::FaceEnhancer(const std::shared_ptr<Ort::Env> &env) :
-    m_env(env) {
-    m_sessionOptions = Ort::SessionOptions();
-    m_sessionOptions.SetGraphOptimizationLevel(ORT_ENABLE_BASIC);
-    m_cudaProviderOptions = std::make_shared<OrtCUDAProviderOptions>();
+FaceEnhancer::FaceEnhancer(const std::shared_ptr<Ort::Env> &env,
+                           const std::shared_ptr<FaceAnalyser> &faceAnalyser,
+                           const std::shared_ptr<FaceMasker> &faceMasker,
+                           const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
+    OrtSession(env) {
+    m_faceAnalyser = faceAnalyser;
+    m_faceMasker = faceMasker;
+    m_modelsJson = modelsInfoJson;
 }
 
 void FaceEnhancer::init() {
-    if (m_faceEnhancerModel != nullptr && *m_faceEnhancerModel == Globals::faceEnhancerModel) {
-        return;
-    }
-
-    m_faceEnhancerModel = std::make_shared<Globals::EnumFaceEnhancerModel>(Globals::faceEnhancerModel);
-    m_cudaProviderOptions->device_id = 0;
-    m_sessionOptions.AppendExecutionProvider_CUDA(*m_cudaProviderOptions);
-
-    // Todo
-    m_modelsJson = std::make_shared<nlohmann::json>();
-    std::ifstream file("./modelsInfo.json");
-    if (file.is_open()) {
-        file >> *m_modelsJson;
-        file.close();
-    }
-
-    // Todo
-    switch (Globals::faceEnhancerModel) {
-    case Globals::FE_Gfpgan_14:
-        m_modelName = "gfpgan_1.4";
-        break;
-    case Globals::FE_CodeFormer:
-        m_modelName = "codeformer";
-        break;
-    default:
-        m_modelName = "gfpgan_1.4";
-        break;
-    }
     std::string modelPath = m_modelsJson->at("faceEnhancerModels").at(m_modelName).at("path");
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    // windows
-    std::wstring wideModelPath(modelPath.begin(), modelPath.end());
-    m_session = std::make_shared<Ort::Session>(*m_env, wideModelPath.c_str(), m_sessionOptions);
-#else
-    // linux
-    m_session = std::make_shared<Ort::Session>(Ort::Session(*m_env, modelPath.c_str(), m_sessionOptions));
-#endif
+    // Todo 检查modelPath文件是否存在，不存在则下载
 
-    size_t numInputNodes = m_session->GetInputCount();
-    size_t numOutputNodes = m_session->GetOutputCount();
-
-    m_inputNames.reserve(numInputNodes);
-    m_outputNames.reserve(numOutputNodes);
-    m_inputNamesPtrs.reserve(numInputNodes);
-    m_outputNamesPtrs.reserve(numOutputNodes);
-
-    Ort::AllocatorWithDefaultOptions allocator;
-    for (size_t i = 0; i < numInputNodes; i++) {
-        m_inputNamesPtrs.push_back(std::move(m_session->GetInputNameAllocated(i, allocator)));
-        m_inputNames.push_back(m_inputNamesPtrs[i].get());
-        Ort::TypeInfo inputTypeInfo = m_session->GetInputTypeInfo(i);
-        auto inputTensorInfo = inputTypeInfo.GetTensorTypeAndShapeInfo();
-        auto inputDims = inputTensorInfo.GetShape();
-        m_inputNodeDims.push_back(inputDims);
-    }
-    for (size_t i = 0; i < numOutputNodes; i++) {
-        m_outputNamesPtrs.push_back(std::move(m_session->GetOutputNameAllocated(i, allocator)));
-        m_outputNames.push_back(m_outputNamesPtrs[i].get());
-        Ort::TypeInfo outputTypeInfo = m_session->GetOutputTypeInfo(i);
-        auto outputTensorInfo = outputTypeInfo.GetTensorTypeAndShapeInfo();
-        auto outputDims = outputTensorInfo.GetShape();
-        m_outputNodeDims.push_back(outputDims);
-    }
     m_inputHeight = (int)m_inputNodeDims[0][2];
     m_inputWidth = (int)m_inputNodeDims[0][3];
 
@@ -95,6 +38,7 @@ void FaceEnhancer::init() {
     for (int i = 0; i < fVec.size(); i += 2) {
         m_warpTemplate.emplace_back(fVec.at(i), fVec.at(i + 1));
     }
+    
     auto iVec = m_modelsJson->at("faceEnhancerModels").at(m_modelName).at("size").get<std::vector<int>>();
     m_size = cv::Size(iVec.at(0), iVec.at(1));
 }
@@ -138,8 +82,40 @@ void FaceEnhancer::setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnal
 
 std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionFrame) {
-    init();
+    if (m_faceEnhancerModel == nullptr || *m_faceEnhancerModel != Globals::faceEnhancerModel) {
+        // Todo
+        switch (Globals::faceEnhancerModel) {
+        case Globals::FE_Gfpgan_14:
+            m_modelName = "gfpgan_1.4";
+            break;
+        case Globals::FE_CodeFormer:
+            m_modelName = "codeformer";
+            break;
+        default:
+            m_modelName = "gfpgan_1.4";
+            break;
+        }
+        std::string modelPath = m_modelsJson->at("faceEnhancerModels").at(m_modelName).at("path");
+        
+        // Todo 检查modelPath是否存在, 不存在则下载
+        
+        this->createSession(modelPath);
+        init();
+    }
+    auto result = applyEnhance(targetFace, tempVisionFrame);
+    return result;
+}
 
+std::shared_ptr<Typing::VisionFrame>
+FaceEnhancer::blendFrame(const VisionFrame &targetFrame,
+                         const VisionFrame &pasteVisionFrame) {
+    const float faceEnhancerBlend = 1 - ((float)Globals::faceEnhancerBlend / 100.f);
+    cv::Mat dstimg;
+    cv::addWeighted(targetFrame, faceEnhancerBlend, pasteVisionFrame, 1 - faceEnhancerBlend, 0, dstimg);
+    return std::make_shared<Typing::VisionFrame>(std::move(dstimg));
+}
+
+std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targetFace, const VisionFrame &tempVisionFrame) {
     // Todo
     auto cropVisionAndAffineMat = FaceHelper::warpFaceByFaceLandmarks5(tempVisionFrame,
                                                                        targetFace.faceLandMark5_68,
@@ -174,9 +150,9 @@ FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionF
             std::vector<int64_t> weightsShape = {1, 1};
             std::vector<double> weightsData = {1.0};
             Ort::Value weightsTensor = Ort::Value::CreateTensor<double>(m_memoryInfo, weightsData.data(),
-                                                                      weightsData.size(),
-                                                                      weightsShape.data(),
-                                                                      weightsShape.size());
+                                                                        weightsData.size(),
+                                                                        weightsShape.data(),
+                                                                        weightsShape.size());
             inputTensors.push_back(std::move(weightsTensor));
         }
     }
@@ -215,10 +191,11 @@ FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionF
         cropMask.setTo(1, cropMask > 1);
     }
 
-    cv::Mat dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, cropMaskList.front(),
-                                             std::get<1>(*cropVisionAndAffineMat));
+    auto dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, cropMaskList.front(),
+                                          std::get<1>(*cropVisionAndAffineMat));
+    dstImage = blendFrame(tempVisionFrame, *dstImage);
 
-    return std::make_shared<Typing::VisionFrame>(std::move(dstImage));
+    return dstImage;
 }
 
 } // namespace Ffc

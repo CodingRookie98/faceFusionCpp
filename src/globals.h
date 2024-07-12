@@ -15,6 +15,10 @@
 
 
 namespace Ffc::Globals {
+// general
+static std::vector<std::string> sourcePaths;
+static std::vector<std::string> targetPaths;
+static std::string outputPath;
 // face analyser
 static float faceDetectorScore = 0.5;
 static float faceLandmarkerScore = 0.5;
@@ -61,6 +65,7 @@ enum EnumFaceEnhancerModel {
     FE_CodeFormer,
 };
 static EnumFaceEnhancerModel faceEnhancerModel = FE_Gfpgan_14;
+static int faceEnhancerBlend = 80;
 } // namespace Ffc::Globals
 
 
