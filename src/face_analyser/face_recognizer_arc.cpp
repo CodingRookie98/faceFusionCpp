@@ -8,6 +8,8 @@
  ******************************************************************************
  */
 
+#include <nlohmann/json.hpp>
+#include <fstream>
 #include "face_recognizer_arc.h"
 
 namespace Ffc {
@@ -48,9 +50,22 @@ void FaceRecognizerArcW600kR50::preProcess(const Typing::VisionFrame &visionFram
     m_inputWidth = (int)m_inputNodeDims[0][2];
     m_inputHeight = (int)m_inputNodeDims[0][3];
 
+    // Todo
+    auto modelsInfoJson = std::make_shared<nlohmann::json>();
+    std::ifstream file("./modelsInfo.json");
+    if (file.is_open()) {
+        file >> *modelsInfoJson;
+        file.close();
+    }
+    std::vector<float> fVec = modelsInfoJson->at("faceHelper").at("warpTemplate").at("arcface_112_v2").get<std::vector<float>>();
+    std::vector<cv::Point2f> warpTemplate;
+    for (int i = 0; i < fVec.size(); i += 2) {
+        warpTemplate.emplace_back(fVec.at(i), fVec.at(i + 1));
+    }
+
     // <0> is cropVision, <1> is affineMatrix
     auto cropVisionFrameAndAffineMat = FaceHelper::warpFaceByFaceLandmarks5(visionFrame, faceLandmark5_68,
-                                                                            "arcface_112_v2",
+                                                                            warpTemplate,
                                                                             cv::Size(112, 112));
 
     std::vector<cv::Mat> bgrChannels(3);

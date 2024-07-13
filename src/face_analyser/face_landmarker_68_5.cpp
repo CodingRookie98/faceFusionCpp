@@ -8,6 +8,8 @@
  ******************************************************************************
  */
 
+#include <fstream>
+#include <nlohmann/json.hpp>
 #include "face_landmarker_68_5.h"
 
 namespace Ffc {
@@ -19,7 +21,21 @@ void FaceLandmarker68_5::preProcess(const FaceLandmark &faceLandmark5) {
     m_inputHeight = m_inputNodeDims[0][1];
     m_inputWidth = m_inputNodeDims[0][2];
     Ffc::Typing::FaceLandmark landmark5 = faceLandmark5;
-    m_affineMatrix = Ffc::FaceHelper::estimateMatrixByFaceLandmark5(landmark5, "ffhq_512", cv::Size(1, 1));
+
+    // Todo
+    auto modelsInfoJson = std::make_shared<nlohmann::json>();
+    std::ifstream file("./modelsInfo.json");
+    if (file.is_open()) {
+        file >> *modelsInfoJson;
+        file.close();
+    }
+    std::vector<float> fVec = modelsInfoJson->at("faceHelper").at("warpTemplate").at("ffhq_512").get<std::vector<float>>();
+    std::vector<cv::Point2f> warpTemplate;
+    for (int i = 0; i < fVec.size();  i += 2) {
+        warpTemplate.emplace_back(fVec.at(i), fVec.at(i + 1));
+    }
+
+    m_affineMatrix = Ffc::FaceHelper::estimateMatrixByFaceLandmark5(landmark5, warpTemplate, cv::Size(1, 1));
     cv::transform(landmark5, landmark5, m_affineMatrix);
 
     for (const auto &point : landmark5) {

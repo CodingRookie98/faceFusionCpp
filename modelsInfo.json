@@ -1,0 +1,281 @@
+{
+  "faceEnhancerModels": {
+    "codeformer": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/codeformer.onnx",
+      "path": "./models/codeformer.onnx",
+      "template": "ffhq_512",
+      "size": [
+        512,
+        512
+      ]
+    },
+    "gfpgan_1.2": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/gfpgan_1.2.onnx",
+      "path": "./models/gfpgan_1.2.onnx",
+      "template": "ffhq_512",
+      "size": [
+        512,
+        512
+      ]
+    },
+    "gfpgan_1.3": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/gfpgan_1.3.onnx",
+      "path": "./models/gfpgan_1.3.onnx",
+      "template": "ffhq_512",
+      "size": [
+        512,
+        512
+      ]
+    },
+    "gfpgan_1.4": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/gfpgan_1.4.onnx",
+      "path": "./models/gfpgan_1.4.onnx",
+      "template": "ffhq_512",
+      "size": [
+        512,
+        512
+      ]
+    },
+    "gpen_bfr_256": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/gpen_bfr_256.onnx",
+      "path": "./models/gpen_bfr_256.onnx",
+      "template": "arcface_128_v2",
+      "size": [
+        256,
+        256
+      ]
+    },
+    "gpen_bfr_512": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/gpen_bfr_512.onnx",
+      "path": "./models/gpen_bfr_512.onnx",
+      "template": "ffhq_512",
+      "size": [
+        512,
+        512
+      ]
+    },
+    "gpen_bfr_1024": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/gpen_bfr_1024.onnx",
+      "path": "./models/gpen_bfr_1024.onnx",
+      "template": "ffhq_512",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    "gpen_bfr_2048": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/gpen_bfr_2048.onnx",
+      "path": "./models/gpen_bfr_2048.onnx",
+      "template": "ffhq_512",
+      "size": [
+        2048,
+        2048
+      ]
+    },
+    "restoreformer_plus_plus": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/restoreformer_plus_plus.onnx",
+      "path": "./models/restoreformer_plus_plus.onnx",
+      "template": "ffhq_512",
+      "size": [
+        512,
+        512
+      ]
+    }
+  },
+  "faceHelper": {
+    "warpTemplate": {
+      "arcface_112_v1": [
+        0.35473214,
+        0.45658929,
+        0.64526786,
+        0.45658929,
+        0.50000000,
+        0.61154464,
+        0.37913393,
+        0.77687500,
+        0.62086607,
+        0.77687500
+      ],
+      "arcface_112_v2": [
+        0.34191607,
+        0.46157411,
+        0.65653393,
+        0.45983393,
+        0.50022500,
+        0.64050536,
+        0.37097589,
+        0.82469196,
+        0.63151696,
+        0.82325089
+      ],
+      "arcface_128_v2": [
+        0.36167656,
+        0.40387734,
+        0.63696719,
+        0.40235469,
+        0.50019687,
+        0.56044219,
+        0.38710391,
+        0.72160547,
+        0.61507734,
+        0.72034453
+      ],
+      "ffhq_512": [
+        0.37691676,
+        0.46864664,
+        0.62285697,
+        0.46912813,
+        0.50123859,
+        0.61331904,
+        0.39308822,
+        0.72541100,
+        0.61150205,
+        0.72490465
+      ]
+    }
+  },
+  "faceSwapperModels": {
+    "blendswap_256": {
+      "type": "blendswap",
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/blendswap_256.onnx",
+      "path": "./models/blendswap_256.onnx",
+      "template": "ffhq_512",
+      "size": [
+        256,
+        256
+      ],
+      "mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "standard_deviation": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "inswapper_128": {
+      "type": "inswapper",
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx",
+      "path": "./models/inswapper_128.onnx",
+      "template": "arcface_128_v2",
+      "size": [
+        128,
+        128
+      ],
+      "mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "standard_deviation": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "inswapper_128_fp16": {
+      "type": "inswapper",
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128_fp16.onnx",
+      "path": "./models/inswapper_128_fp16.onnx",
+      "template": "arcface_128_v2",
+      "size": [
+        128,
+        128
+      ],
+      "mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "standard_deviation": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "simswap_256": {
+      "type": "simswap",
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/simswap_256.onnx",
+      "path": "./models/simswap_256.onnx",
+      "template": "arcface_112_v1",
+      "size": [
+        256,
+        256
+      ],
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "standard_deviation": [
+        0.229,
+        0.224,
+        0.225
+      ]
+    },
+    "simswap_512_unofficial": {
+      "type": "simswap",
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/simswap_512_unofficial.onnx",
+      "path": "./models/simswap_512_unofficial.onnx",
+      "template": "arcface_112_v1",
+      "size": [
+        512,
+        512
+      ],
+      "mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "standard_deviation": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "uniface_256": {
+      "type": "uniface",
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/uniface_256.onnx",
+      "path": "./models/uniface_256.onnx",
+      "template": "ffhq_512",
+      "size": [
+        256,
+        256
+      ],
+      "mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "standard_deviation": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "faceMaskerModels": {
+    "face_occluder": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/face_occluder.onnx",
+      "path": "./models/face_occluder.onnx"
+    },
+    "face_parser": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/face_parser.onnx",
+      "path": "./models/face_parser.onnx"
+    }
+  },
+  "faceMaskerRegions": {
+    "skin": 1,
+    "left-eyebrow": 2,
+    "right-eyebrow": 3,
+    "left-eye": 4,
+    "right-eye": 5,
+    "glasses": 6,
+    "nose": 10,
+    "mouth": 11,
+    "upper-lip": 12,
+    "lower-lip": 13
+  }
+}

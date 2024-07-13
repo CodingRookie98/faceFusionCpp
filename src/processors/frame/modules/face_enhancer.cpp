@@ -9,9 +9,6 @@
  */
 
 #include "face_enhancer.h"
-// Todo
-#include <iostream>
-#include <fstream>
 
 namespace Ffc {
 FaceEnhancer::FaceEnhancer(const std::shared_ptr<Ort::Env> &env,
@@ -55,10 +52,6 @@ void FaceEnhancer::processImage(const std::string &targetPath, const std::string
 std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::processFrame(const Typing::Faces &referenceFaces,
                            const Typing::VisionFrame &targetFrame) {
-    if (m_faceAnalyser == nullptr) {
-        throw std::runtime_error("Face analyser is not set.");
-    }
-
     std::shared_ptr<Typing::VisionFrame> resultFrame = std::make_shared<Typing::VisionFrame>(targetFrame);
     if (Globals::faceSelectorMode == Globals::EnumFaceSelectorMode::FS_Many) {
         auto manyTargetFaces = m_faceAnalyser->getManyFaces(targetFrame);
@@ -122,7 +115,8 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
                                                                        m_warpTemplate, m_size);
     auto cropBoxMask = FaceMasker::createStaticBoxMask(std::get<0>(*cropVisionAndAffineMat).size(),
                                                        Globals::faceMaskBlur, Globals::faceMaskPadding);
-    std::list<cv::Mat> cropMaskList{*cropBoxMask};
+    auto cropOcclusionMask = m_faceMasker->createOcclusionMask(std::get<0>(*cropVisionAndAffineMat));
+    std::list<cv::Mat> cropMaskList{*cropBoxMask, *cropOcclusionMask};
 
     std::vector<cv::Mat> bgrChannels(3);
     split(std::get<0>(*cropVisionAndAffineMat), bgrChannels);
@@ -191,7 +185,7 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
         cropMask.setTo(1, cropMask > 1);
     }
 
-    auto dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, cropMaskList.front(),
+    auto dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, cropMaskList.back(),
                                           std::get<1>(*cropVisionAndAffineMat));
     dstImage = blendFrame(tempVisionFrame, *dstImage);
 

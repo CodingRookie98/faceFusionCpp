@@ -65,7 +65,7 @@ enum EnumFaceEnhancerModel {
     FE_CodeFormer,
 };
 static EnumFaceEnhancerModel faceEnhancerModel = FE_Gfpgan_14;
-static int faceEnhancerBlend = 80;
+static int faceEnhancerBlend = 100;
 } // namespace Ffc::Globals
 
 

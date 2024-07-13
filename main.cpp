@@ -21,20 +21,20 @@ int main() {
     Ffc::Globals::sourcePaths.push_back(sourcePath3);
 
     auto faceAnalyser = std::make_shared<Ffc::FaceAnalyser>(env);
-    auto faceMasker = std::make_shared<Ffc::FaceMasker>(env);
     auto modelsInfoJson = std::make_shared<nlohmann::json>();
     std::ifstream file("./modelsInfo.json");
     if (file.is_open()) {
         file >> *modelsInfoJson;
         file.close();
     }
+    auto faceMasker = std::make_shared<Ffc::FaceMasker>(env, modelsInfoJson);
 
-    //    Ffc::FaceSwapper faceSwapper(env, faceAnalyser, faceMasker, modelsInfoJson);
-    //    faceSwapper.processImage(Ffc::Globals::sourcePaths, targetPath, swapOutputPath);
+    Ffc::FaceSwapper faceSwapper(env, faceAnalyser, faceMasker, modelsInfoJson);
+    faceSwapper.processImage(Ffc::Globals::sourcePaths, targetPath, swapOutputPath);
 
-    Ffc::FaceEnhancer faceEnhancer(env, faceAnalyser, faceMasker, modelsInfoJson);
-    faceEnhancer.setFaceAnalyser(faceAnalyser);
-    faceEnhancer.processImage(swapOutputPath, enhanceOutputPath);
+    //    Ffc::FaceEnhancer faceEnhancer(env, faceAnalyser, faceMasker, modelsInfoJson);
+//    faceEnhancer.setFaceAnalyser(faceAnalyser);
+//    faceEnhancer.processImage(targetPath, enhanceOutputPath);
 
     return 0;
 }

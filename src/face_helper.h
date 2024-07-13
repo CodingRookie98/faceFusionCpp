@@ -19,7 +19,6 @@ namespace Ffc {
 using namespace Typing;
 class FaceHelper {
 public:
-    static std::unordered_map<std::string, std::vector<cv::Point2f>> m_warpTemplateMap;
     FaceHelper() = default;
     ~FaceHelper() = default;
 
@@ -28,17 +27,9 @@ public:
     static std::shared_ptr<std::tuple<Typing::VisionFrame, cv::Mat>>
     warpFaceByFaceLandmarks5(const Typing::VisionFrame &tempVisionFrame,
                              const Typing::FaceLandmark &faceLandmark5,
-                             const std::string &warpTemplate,
-                             const cv::Size &cropSize);
-    static std::shared_ptr<std::tuple<Typing::VisionFrame, cv::Mat>>
-    warpFaceByFaceLandmarks5(const Typing::VisionFrame &tempVisionFrame,
-                             const Typing::FaceLandmark &faceLandmark5,
                              const std::vector<cv::Point2f> &warpTemplate,
                              const cv::Size &cropSize);
 
-    static cv::Mat estimateMatrixByFaceLandmark5(const Typing::FaceLandmark &landmark5,
-                                                 const std::string &warpTemplate,
-                                                 const cv::Size &cropSize);
     static cv::Mat estimateMatrixByFaceLandmark5(const Typing::FaceLandmark &landmark5,
                                                  const std::vector<cv::Point2f> &warpTemplate,
                                                  const cv::Size &cropSize);
