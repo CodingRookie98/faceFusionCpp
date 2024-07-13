@@ -10,6 +10,7 @@
 
 #include "face_masker.h"
 #include <iostream>
+#include <fstream>
 
 namespace Ffc {
 std::shared_ptr<cv::Mat>
@@ -48,24 +49,31 @@ std::shared_ptr<cv::Mat> FaceMasker::createOcclusionMask(const Typing::VisionFra
     // Todo 检查model是否存在，若不存在则下载
 
     this->createSession(modelPath);
-    m_inputHeight = m_inputNodeDims[0][1];
-    m_inputWidth = m_inputNodeDims[0][2];
+    const int inputHeight = m_inputNodeDims[0][1];
+    const int inputWidth = m_inputNodeDims[0][2];
 
     cv::Mat inputImage = cropVisionFrame.clone();
-    cv::resize(cropVisionFrame, inputImage, cv::Size(m_inputHeight, m_inputWidth));
+    cv::resize(cropVisionFrame, inputImage, cv::Size(inputHeight, inputWidth));
     std::vector<cv::Mat> bgrChannels;
     cv::split(inputImage, bgrChannels);
     for (int i = 0; i < 3; i++) {
         bgrChannels[i].convertTo(bgrChannels[i], CV_32FC1, 1.0 / 255.0);
     }
-    const int imageArea = m_inputHeight * m_inputWidth;
+    const int imageArea = inputHeight * inputWidth;
     std::vector<float> inputImageData(3 * imageArea);
-    size_t singleChnSize = imageArea * sizeof(float);
-    memcpy(inputImageData.data(), (float *)bgrChannels[0].data, singleChnSize);
-    memcpy(inputImageData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
-    memcpy(inputImageData.data() + imageArea * 2, (float *)bgrChannels[2].data, singleChnSize);
+    
+    // 妈的，傻逼输入形状(1, 256, 256, 3), 害得老子排查了一天半的bug, 老子服了
+    int k = 0;
+    for (int i = 0; i < inputHeight; ++i) {
+        for (int j = 0; j < inputWidth; ++j) {
+            inputImageData.at(k) = bgrChannels[2].at<float>(i, j);
+            inputImageData.at(k + 1) = bgrChannels[1].at<float>(i, j);
+            inputImageData.at(k + 2) = bgrChannels[0].at<float>(i, j);
+            k += 3;
+        }
+    }
 
-    std::vector<int64_t> inputImageShape{1, m_inputHeight, m_inputWidth, 3};
+    std::vector<int64_t> inputImageShape{1, inputHeight, inputWidth, 3};
 
     std::vector<Ort::Value> inputTensors;
     inputTensors.emplace_back(Ort::Value::CreateTensor<float>(m_memoryInfo, inputImageData.data(),
@@ -82,23 +90,22 @@ std::shared_ptr<cv::Mat> FaceMasker::createOcclusionMask(const Typing::VisionFra
     std::vector<int64_t> outsShape = outputTensors[0].GetTensorTypeAndShapeInfo().GetShape();
     const int outputHeight = outsShape[1];
     const int outputWidth = outsShape[2];
-    cv::Mat mask(outputHeight, outputWidth, CV_32F);
-
-    for (int i = 0; i < outputHeight; ++i) {
-        memcpy(mask.ptr<float>(i), pdata + (i * outputWidth), outputWidth * sizeof(float));
-    }
-
+    
+    cv::Mat mask(outputHeight, outputWidth, CV_32FC1, pdata);
+    mask.setTo(0, mask < 0);
+    mask.setTo(1, mask > 1);
+    
+    cv::resize(mask, mask, cropVisionFrame.size());
     mask.setTo(0, mask < 0);
     mask.setTo(1, mask > 1);
 
-    cv::resize(mask, mask, cv::Size(cropVisionFrame.cols, cropVisionFrame.rows));
-
     cv::GaussianBlur(mask, mask, cv::Size(0, 0), 5);
+    mask.setTo(0, mask < 0);
+    mask.setTo(1, mask > 1);
 
     mask.setTo(0.5, mask < 0.5);
     mask.setTo(1, mask > 1);
     mask = (mask - 0.5) * 2;
-
     return std::make_shared<cv::Mat>(std::move(mask));
 }
 } // namespace Ffc

@@ -116,7 +116,7 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
     auto cropBoxMask = FaceMasker::createStaticBoxMask(std::get<0>(*cropVisionAndAffineMat).size(),
                                                        Globals::faceMaskBlur, Globals::faceMaskPadding);
     auto cropOcclusionMask = m_faceMasker->createOcclusionMask(std::get<0>(*cropVisionAndAffineMat));
-    std::list<cv::Mat> cropMaskList{*cropBoxMask, *cropOcclusionMask};
+    std::vector<cv::Mat> cropMaskVec{*cropBoxMask, *cropOcclusionMask};
 
     std::vector<cv::Mat> bgrChannels(3);
     split(std::get<0>(*cropVisionAndAffineMat), bgrChannels);
@@ -180,12 +180,12 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
     cv::merge(channelMats, resultMat);
     resultMat.convertTo(resultMat, CV_8UC3);
 
-    for (auto &cropMask : cropMaskList) {
+    for (auto &cropMask : cropMaskVec) {
         cropMask.setTo(0, cropMask < 0);
         cropMask.setTo(1, cropMask > 1);
     }
 
-    auto dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, cropMaskList.back(),
+    auto dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, cropMaskVec.at(1),
                                           std::get<1>(*cropVisionAndAffineMat));
     dstImage = blendFrame(tempVisionFrame, *dstImage);
 

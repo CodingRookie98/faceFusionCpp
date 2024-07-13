@@ -10,6 +10,8 @@ target_sources(${ProgramName} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/face_masker.h
         ${CMAKE_CURRENT_SOURCE_DIR}/ort_session.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/ort_session.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/url_downloader.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/url_downloader.h
 )
 
 set(CUDA_DIR "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2")

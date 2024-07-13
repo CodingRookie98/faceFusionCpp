@@ -16,35 +16,22 @@
 #include <onnx/onnx_pb.h>
 #include <onnxruntime/core/graph/onnx_protobuf.h>
 
-int main() {
-    // Initialize ONNX Runtime
-    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "ONNXModelLoader");
-    Ort::SessionOptions session_options;
-    session_options.SetIntraOpNumThreads(1);
-
-    // Load the ONNX model
-    const char *model_path = "path/to/your/model.onnx";
-    Ort::Session session(env, model_path, session_options);
-
-    // Load ONNX model as a protobuf message
-    onnx::ModelProto model_proto;
-    std::ifstream input(model_path, std::ios::binary);
-    if (!model_proto.ParseFromIstream(&input)) {
-        std::cerr << "Failed to load model." << std::endl;
-        return -1;
+cv::Mat computeMinMask(const std::vector<cv::Mat>& masks) {
+    if (masks.empty()) {
+        throw std::invalid_argument("The input vector is empty.");
     }
-
-    // Access the initializer
-    const onnx::TensorProto &initializer = model_proto.graph().initializer(model_proto.graph().initializer_size() - 1);
-
-    // Convert initializer to an array
-    std::vector<float> initializer_array(initializer.float_data().begin(), initializer.float_data().end());
-
-    // Print the array (for example purposes)
-    for (float value : initializer_array) {
-        std::cout << value << " ";
+    
+    // Initialize the minMask with the first mask in the vector
+    cv::Mat minMask = masks[0].clone();
+    
+    for (size_t i = 1; i < masks.size(); ++i) {
+        // Check if the current mask has the same size and type as minMask
+        if (masks[i].size() != minMask.size() || masks[i].type() != minMask.type()) {
+            throw std::invalid_argument("All masks must have the same size and type.");
+        }
+        cv::min(minMask, masks[i], minMask);
     }
-    std::cout << std::endl;
-
-    return 0;
+    
+    return minMask;
 }
+

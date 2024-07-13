@@ -27,12 +27,10 @@ public:
     static std::shared_ptr<cv::Mat> createStaticBoxMask(const cv::Size &cropSize, const float &faceMaskBlur,
                                                         const Typing::Padding &faceMaskPadding);
     std::shared_ptr<cv::Mat> createOcclusionMask(const Typing::VisionFrame &cropVisionFrame);
+    // Todo createRegionMask
 
 private:
     std::shared_ptr<nlohmann::json> m_modelsJson = nullptr;
-    int m_inputHeight;
-    int m_inputWidth;
-    cv::Size m_size;
 };
 
 } // namespace Ffc
