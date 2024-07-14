@@ -56,16 +56,16 @@ private:
     prepareCropVisionFrame(const Typing::VisionFrame &visionFrame,
                            const std::vector<float> &mean,
                            const std::vector<float> &standDeviation);
-    static std::shared_ptr<std::list<cv::Mat>>
-    getCropMaskList(const Typing::VisionFrame &visionFrame, const cv::Size &cropSize,
-                    const float &faceMaskBlur, const Typing::Padding &faceMaskPadding);
+    std::shared_ptr<std::vector<cv::Mat>>
+    getCropMasks(const Typing::VisionFrame &visionFrame, const cv::Size &cropSize,
+                 const float &faceMaskBlur, const Typing::Padding &faceMaskPadding);
     std::shared_ptr<std::vector<float>> prepareSourceEmbedding(const Typing::Face &sourceFace);
     std::shared_ptr<std::vector<float>> prepareCropFrameData(const Typing::VisionFrame &cropFrame);
 
     std::shared_ptr<FaceAnalyser> m_faceAnalyser = nullptr;
     std::shared_ptr<FaceMasker> m_faceMasker = nullptr;
     std::shared_ptr<nlohmann::json> m_modelsJson = nullptr;
-    std::shared_ptr<Globals::EnumFaceSwapperModel> m_faceSwapperModel = nullptr;
+    std::shared_ptr<Typing::EnumFaceSwapperModel> m_faceSwapperModel = nullptr;
     int m_inputHeight;
     int m_inputWidth;
     cv::Size m_size;

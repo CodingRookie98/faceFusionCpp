@@ -52,7 +52,7 @@ private:
     std::string m_modelName;
     std::vector<cv::Point2f> m_warpTemplate;
     cv::Size m_size;
-    std::shared_ptr<Globals::EnumFaceEnhancerModel> m_faceEnhancerModel;
+    std::shared_ptr<Typing::EnumFaceEnhancerModel> m_faceEnhancerModel;
 };
 } // namespace Ffc
 #endif // FACEFUSIONCPP_SRC_PROCESSORS_FRAME_MODULES_FACE_ENHANCER_H_

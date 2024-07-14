@@ -14,6 +14,7 @@
 #include <opencv2/imgproc.hpp>
 #include <onnxruntime_cxx_api.h>
 #include <unordered_map>
+#include <nlohmann/json.hpp>
 #include "typing.h"
 #include "analyser_base.h"
 #include "face_detector_yolo.h"
@@ -21,6 +22,7 @@
 #include "face_landmarker_68_5.h"
 #include "face_recognizer_arc.h"
 #include "globals.h"
+#include "ort_session.h"
 
 namespace Ffc {
 
@@ -33,15 +35,17 @@ public:
         RecognizeWithArcfaceW600kR50
     };
 
-    explicit FaceAnalyser(const std::shared_ptr<Ort::Env> &env);
+    explicit FaceAnalyser(const std::shared_ptr<Ort::Env> &env, const std::shared_ptr<nlohmann::json> &modelsInfoJson);
     ~FaceAnalyser() = default;
 
     std::shared_ptr<Typing::Face> getAverageFace(const std::vector<Typing::VisionFrame> &visionFrames, const int &position = 0);
-    
+
     std::shared_ptr<Typing::Faces> getManyFaces(const Typing::VisionFrame &visionFrame);
+
 private:
     std::shared_ptr<Ort::Env> m_env;
-    
+    std::shared_ptr<nlohmann::json> m_modelsInfoJson;
+
     std::unordered_map<Method, std::shared_ptr<AnalyserBase>> m_analyserMap;
     void createAnalyser(const Method &method);
     Typing::Face getOneFace(const Typing::VisionFrame &visionFrame, const int &position = 0);
@@ -63,6 +67,9 @@ private:
     std::shared_ptr<std::tuple<Typing::Embedding, Typing::Embedding>>
     calculateEmbedding(const Typing::VisionFrame &visionFrame,
                        const Typing::FaceLandmark &faceLandmark5_68);
+    std::shared_ptr<std::tuple<int, int>>
+    detectGenderAge(const Typing::VisionFrame &visionFrame,
+                    const Typing::BoundingBox &boundingBox);
 };
 } // namespace Ffc
 

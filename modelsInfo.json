@@ -277,5 +277,51 @@
     "mouth": 11,
     "upper-lip": 12,
     "lower-lip": 13
+  },
+  "faceAnalyserModels": {
+    "face_detector_retinaface": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/retinaface_10g.onnx",
+      "path": "./models/retinaface_10g.onnx"
+    },
+    "face_detector_scrfd": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/scrfd_2.5g.onnx",
+      "path": "./models/scrfd_2.5g.onnx"
+    },
+    "face_detector_yoloface": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/yoloface_8n.onnx",
+      "path": "./models/yoloface_8n.onnx"
+    },
+    "face_detector_yunet": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/yunet_2023mar.onnx",
+      "path": "./models/yunet_2023mar.onnx"
+    },
+    "face_recognizer_arcface_blendswap": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/arcface_w600k_r50.onnx",
+      "path": "./models/arcface_w600k_r50.onnx"
+    },
+    "face_recognizer_arcface_inswapper": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/arcface_w600k_r50.onnx",
+      "path": "./models/arcface_w600k_r50.onnx"
+    },
+    "face_recognizer_arcface_simswap": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/arcface_simswap.onnx",
+      "path": "./models/arcface_simswap.onnx"
+    },
+    "face_recognizer_arcface_uniface": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/arcface_w600k_r50.onnx",
+      "path": "./models/arcface_w600k_r50.onnx"
+    },
+    "face_landmarker_68": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/2dfan4.onnx",
+      "path": "./models/2dfan4.onnx"
+    },
+    "face_landmarker_68_5": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/face_landmarker_68_5.onnx",
+      "path": "./models/face_landmarker_68_5.onnx"
+    },
+    "gender_age": {
+      "url": "https://github.com/facefusion/facefusion-assets/releases/download/models/gender_age.onnx",
+      "path": "./models/gender_age.onnx"
+    }
   }
 }

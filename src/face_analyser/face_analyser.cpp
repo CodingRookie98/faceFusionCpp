@@ -11,8 +11,9 @@
 #include "face_analyser.h"
 
 namespace Ffc {
-FaceAnalyser::FaceAnalyser(const std::shared_ptr<Ort::Env> &env) {
+FaceAnalyser::FaceAnalyser(const std::shared_ptr<Ort::Env> &env, const std::shared_ptr<nlohmann::json> &modelsInfoJson) {
     this->m_env = env;
+    m_modelsInfoJson = modelsInfoJson;
 }
 
 void FaceAnalyser::createAnalyser(const FaceAnalyser::Method &method) {
@@ -108,6 +109,8 @@ Typing::Face FaceAnalyser::getOneFace(const Typing::VisionFrame &visionFrame, co
 std::shared_ptr<Typing::Faces> FaceAnalyser::getManyFaces(const Typing::VisionFrame &visionFrame) {
     auto result = this->detectWithYoloFace(visionFrame, Globals::faceDetectorSize);
     auto faces = this->createFaces(visionFrame, result);
+    
+    //Todo 对faces排序以及按照年龄和性别筛选
 
     return faces;
 }
@@ -149,7 +152,7 @@ FaceAnalyser::createFaces(const Typing::VisionFrame &visionFrame,
     auto faceLandmarks = new std::vector<Typing::FaceLandmark>(std::get<1>(*input));
     auto scores = new std::vector<Typing::Score>(std::get<2>(*input));
 
-    float iouThreshold = Globals::faceDetectorModel == Globals::EnumFaceDetectModel::FD_Many ? 0.1 : 0.4;
+    float iouThreshold = Globals::faceDetectorModel == Typing::EnumFaceDetectModel::FD_Many ? 0.1 : 0.4;
     auto keepIndices = Ffc::FaceHelper::applyNms(*boundingBoxes, *scores, iouThreshold);
 
     for (const auto &index : keepIndices) {
@@ -175,7 +178,9 @@ FaceAnalyser::createFaces(const Typing::VisionFrame &visionFrame,
         auto embeddingAndNormedEmbedding = this->calculateEmbedding(visionFrame, tempFace.faceLandMark5_68);
         tempFace.embedding = std::get<0>(*embeddingAndNormedEmbedding);
         tempFace.normedEmbedding = std::get<1>(*embeddingAndNormedEmbedding);
-        // todo detect gender and age
+        auto ganderAge = this->detectGenderAge(visionFrame, tempFace.boundingBox);
+        tempFace.gender = std::get<0>(*ganderAge);
+        tempFace.age = std::get<1>(*ganderAge);
 
         resultFaces->emplace_back(tempFace);
     }
@@ -205,5 +210,56 @@ std::shared_ptr<std::tuple<Typing::Embedding, Typing::Embedding>> FaceAnalyser::
 
     auto recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArcW600kR50>(m_analyserMap.at(RecognizeWithArcfaceW600kR50));
     return recognizerArc->recognize(visionFrame, faceLandmark5_68);
+}
+
+std::shared_ptr<std::tuple<int, int>>
+FaceAnalyser::detectGenderAge(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
+    float boundingBoxW = boundingBox.xmax - boundingBox.xmin;
+    float boundingBoxH = boundingBox.ymax - boundingBox.ymin;
+    float maxSide = std::max(boundingBoxW, boundingBoxH);
+    float scale = (float)64 / (float)maxSide;
+    std::vector<float> translation;
+    translation.emplace_back(48 - scale * (boundingBox.xmin + boundingBox.xmax) * 0.5);
+    translation.emplace_back(48 - scale * (boundingBox.ymin + boundingBox.ymax) * 0.5);
+    auto cropVisionAndAffineMat = FaceHelper::warpFaceByTranslation(visionFrame, translation,
+                                                                    scale, cv::Size(96, 96));
+
+    std::string modelPath = m_modelsInfoJson->at("faceAnalyserModels").at("gender_age").at("path").get<std::string>();
+    auto session = std::make_shared<OrtSession>(m_env);
+    session->createSession(modelPath);
+    int inputHeight = session->m_inputNodeDims[0][2];
+    int inputWidth = session->m_inputNodeDims[0][3];
+
+    std::vector<cv::Mat> bgrChannels(3);
+    split(std::get<0>(*cropVisionAndAffineMat), bgrChannels);
+    for (int c = 0; c < 3; c++) {
+        bgrChannels[c].convertTo(bgrChannels[c], CV_32FC1);
+    }
+    const int imageArea = inputHeight * inputWidth;
+    std::vector<float> inputImageData(3 * imageArea);
+    inputImageData.resize(3 * imageArea);
+    size_t singleChnSize = imageArea * sizeof(float);
+    memcpy(inputImageData.data(), (float *)bgrChannels[2].data, singleChnSize); /// rgb顺序
+    memcpy(inputImageData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
+    memcpy(inputImageData.data() + imageArea * 2, (float *)bgrChannels[0].data, singleChnSize);
+
+    std::vector<int64_t> inputTensorShape = {1, 3, 96, 96};
+    std::vector<Ort::Value> inputTensors;
+    inputTensors.emplace_back(Ort::Value::CreateTensor<float>(session->m_memoryInfo,
+                                                              inputImageData.data(), inputImageData.size(),
+                                                              inputTensorShape.data(), inputTensorShape.size()));
+
+    Ort::RunOptions runOptions;
+    std::vector<Ort::Value> outputTensor = session->m_session->Run(runOptions, session->m_inputNames.data(),
+                                                                   inputTensors.data(), inputTensors.size(),
+                                                                   session->m_outputNames.data(), session->m_outputNames.size());
+    const float *pdta = outputTensor[0].GetTensorMutableData<float>();
+    std::shared_ptr<std::tuple<int, int>> result;
+    if (*(pdta) > *(pdta + 1)) {
+        result = std::make_shared<std::tuple<int, int>>(0, std::round(*(pdta + 2) * 100));
+    } else {
+        result = std::make_shared<std::tuple<int, int>>(1, std::round(*(pdta + 2) * 100));
+    }
+    return result;
 }
 } // namespace Ffc

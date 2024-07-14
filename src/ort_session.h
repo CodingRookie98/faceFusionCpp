@@ -21,9 +21,9 @@ public:
     OrtSession(const std::shared_ptr<Ort::Env> &env);
     ~OrtSession() = default;
 
-protected:
     void createSession(const std::string &modelPath);
-    
+    // protected:
+
     std::shared_ptr<Ort::Env> m_env;
     std::shared_ptr<Ort::Session> m_session;
     Ort::SessionOptions m_sessionOptions;
@@ -35,6 +35,7 @@ protected:
     std::vector<std::vector<int64_t>> m_inputNodeDims;  // >=1 outputs
     std::vector<std::vector<int64_t>> m_outputNodeDims; // >=1 outputs
     Ort::MemoryInfo m_memoryInfo = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPU);
+
 private:
 };
 

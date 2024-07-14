@@ -41,16 +41,16 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::processFrame(const Typing::Fac
     }
 
     std::shared_ptr<Typing::VisionFrame> resultFrame = std::make_shared<Typing::VisionFrame>(targetFrame);
-    if (Globals::faceSelectorMode == Globals::EnumFaceSelectorMode::FS_Many) {
+    if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Many) {
         auto manyTargetFaces = m_faceAnalyser->getManyFaces(targetFrame);
         if (!manyTargetFaces->empty()) {
             for (auto &targetFace : *manyTargetFaces) {
                 resultFrame = swapFace(sourceFace, targetFace, *resultFrame);
             }
         }
-    } else if (Globals::faceSelectorMode == Globals::EnumFaceSelectorMode::FS_One) {
+    } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_One) {
         // Todo
-    } else if (Globals::faceSelectorMode == Globals::EnumFaceSelectorMode::FS_Reference) {
+    } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
         // Todo
     }
 
@@ -61,12 +61,12 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::swapFace(const Face &sourceFac
                                                            const Face &targetFace,
                                                            const VisionFrame &targetFrame) {
     if (m_faceSwapperModel == nullptr || *m_faceSwapperModel != Globals::faceSwapperModel) {
-        m_faceSwapperModel = std::make_shared<Globals::EnumFaceSwapperModel>(Globals::faceSwapperModel);
+        m_faceSwapperModel = std::make_shared<Typing::EnumFaceSwapperModel>(Globals::faceSwapperModel);
         switch (Globals::faceSwapperModel) {
-        case Globals::InSwapper_128:
+        case Typing::InSwapper_128:
             m_modelName = "inswapper_128";
             break;
-        case Globals::InSwapper_128_fp16:
+        case Typing::InSwapper_128_fp16:
             m_modelName = "inswapper_128_fp16";
             break;
         default:
@@ -119,7 +119,8 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
     auto croppedTargetFrameAndAffineMat = FaceHelper::warpFaceByFaceLandmarks5(
         targetFrame, targetFace.faceLandMark5_68, m_warpTemplate, m_size);
     auto preparedTargetFrameBGR = Ffc::FaceSwapper::prepareCropVisionFrame(std::get<0>(*croppedTargetFrameAndAffineMat), m_mean, m_standardDeviation);
-    auto cropMaskList = Ffc::FaceSwapper::getCropMaskList(std::get<0>(*croppedTargetFrameAndAffineMat),
+
+    auto cropMasks = Ffc::FaceSwapper::getCropMasks(std::get<0>(*croppedTargetFrameAndAffineMat),
                                                           std::get<0>(*croppedTargetFrameAndAffineMat).size(),
                                                           Globals::faceMaskBlur, Globals::faceMaskPadding);
 
@@ -165,13 +166,15 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
     cv::Mat resultMat;
     cv::merge(channelMats, resultMat);
 
-    for (auto &cropMask : *cropMaskList) {
+    for (auto &cropMask : *cropMasks) {
         cropMask.setTo(0, cropMask < 0);
         cropMask.setTo(1, cropMask > 1);
     }
+    
+    auto cropMask = FaceMasker::getBestMask(*cropMasks);
 
-    auto dstImage = FaceHelper::pasteBack(targetFrame, resultMat, cropMaskList->front(),
-                                             std::get<1>(*croppedTargetFrameAndAffineMat));
+    auto dstImage = FaceHelper::pasteBack(targetFrame, resultMat, *cropMask,
+                                          std::get<1>(*croppedTargetFrameAndAffineMat));
 
     return dstImage;
 }
@@ -195,16 +198,18 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::prepareCropVisionFrame(const V
     return std::make_shared<Typing::VisionFrame>(processedBGR);
 }
 
-std::shared_ptr<std::list<cv::Mat>> FaceSwapper::getCropMaskList(const VisionFrame &visionFrame, const cv::Size &cropSize, const float &faceMaskBlur, const Padding &faceMaskPadding) {
-    auto cropMaskList = std::make_shared<std::list<cv::Mat>>();
-    if (Globals::faceMaskerTypeSet.contains(Globals::enumFaceMaskerType::FM_Box)) {
+std::shared_ptr<std::vector<cv::Mat>> FaceSwapper::getCropMasks(const VisionFrame &visionFrame, const cv::Size &cropSize, const float &faceMaskBlur, const Padding &faceMaskPadding) {
+    auto cropMaskList = std::make_shared<std::vector<cv::Mat>>();
+    if (Globals::faceMaskerTypeSet.contains(Typing::EnumFaceMaskerType::FM_Box)) {
         auto boxMask = FaceMasker::createStaticBoxMask(cropSize,
                                                        Globals::faceMaskBlur, Globals::faceMaskPadding);
         cropMaskList->push_back(*boxMask);
-    } else if (Globals::faceMaskerTypeSet.contains(Globals::enumFaceMaskerType::FM_Occlusion)) {
-        // todo
-    } else if (Globals::faceMaskerTypeSet.contains(Globals::enumFaceMaskerType::FM_Region)) {
-        // todo
+    } else if (Globals::faceMaskerTypeSet.contains(Typing::EnumFaceMaskerType::FM_Occlusion)) {
+        auto occlusionMask = m_faceMasker->createOcclusionMask(visionFrame);
+        cropMaskList->push_back(*occlusionMask);
+    } else if (Globals::faceMaskerTypeSet.contains(Typing::EnumFaceMaskerType::FM_Region)) {
+        auto regionMask = m_faceMasker->createRegionMask(visionFrame);
+        cropMaskList->push_back(*regionMask);
     }
     return cropMaskList;
 }

@@ -21,13 +21,13 @@ int main() {
     Ffc::Globals::sourcePaths.push_back(sourcePath2);
     Ffc::Globals::sourcePaths.push_back(sourcePath3);
 
-    auto faceAnalyser = std::make_shared<Ffc::FaceAnalyser>(env);
     auto modelsInfoJson = std::make_shared<nlohmann::json>();
     std::ifstream file("./modelsInfo.json");
     if (file.is_open()) {
         file >> *modelsInfoJson;
         file.close();
     }
+    auto faceAnalyser = std::make_shared<Ffc::FaceAnalyser>(env, modelsInfoJson);
     auto faceMasker = std::make_shared<Ffc::FaceMasker>(env, modelsInfoJson);
 
     //    Ffc::FaceSwapper faceSwapper(env, faceAnalyser, faceMasker, modelsInfoJson);
@@ -38,7 +38,7 @@ int main() {
     faceEnhancer.processImage(swapOutputPath, enhanceOutputPath);
 
     //    Ffc::UrlDownloader::downloadFile("https://github.com/facefusion/facefusion-assets/releases/download/models/yoloface_8n.onnx",
-//                                      "./temp");
+    //                                      "./temp");
 
     return 0;
 }

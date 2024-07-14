@@ -35,7 +35,7 @@ void FaceEnhancer::init() {
     for (int i = 0; i < fVec.size(); i += 2) {
         m_warpTemplate.emplace_back(fVec.at(i), fVec.at(i + 1));
     }
-    
+
     auto iVec = m_modelsJson->at("faceEnhancerModels").at(m_modelName).at("size").get<std::vector<int>>();
     m_size = cv::Size(iVec.at(0), iVec.at(1));
 }
@@ -53,16 +53,16 @@ std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::processFrame(const Typing::Faces &referenceFaces,
                            const Typing::VisionFrame &targetFrame) {
     std::shared_ptr<Typing::VisionFrame> resultFrame = std::make_shared<Typing::VisionFrame>(targetFrame);
-    if (Globals::faceSelectorMode == Globals::EnumFaceSelectorMode::FS_Many) {
+    if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Many) {
         auto manyTargetFaces = m_faceAnalyser->getManyFaces(targetFrame);
         if (!manyTargetFaces->empty()) {
             for (auto &targetFace : *manyTargetFaces) {
                 resultFrame = enhanceFace(targetFace, *resultFrame);
             }
         }
-    } else if (Globals::faceSelectorMode == Globals::EnumFaceSelectorMode::FS_One) {
+    } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_One) {
         // Todo
-    } else if (Globals::faceSelectorMode == Globals::EnumFaceSelectorMode::FS_Reference) {
+    } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
         // Todo
     }
 
@@ -78,10 +78,10 @@ FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionF
     if (m_faceEnhancerModel == nullptr || *m_faceEnhancerModel != Globals::faceEnhancerModel) {
         // Todo
         switch (Globals::faceEnhancerModel) {
-        case Globals::FE_Gfpgan_14:
+        case Typing::FE_Gfpgan_14:
             m_modelName = "gfpgan_1.4";
             break;
-        case Globals::FE_CodeFormer:
+        case Typing::FE_CodeFormer:
             m_modelName = "codeformer";
             break;
         default:
@@ -89,9 +89,9 @@ FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionF
             break;
         }
         std::string modelPath = m_modelsJson->at("faceEnhancerModels").at(m_modelName).at("path");
-        
+
         // Todo 检查modelPath是否存在, 不存在则下载
-        
+
         this->createSession(modelPath);
         init();
     }
@@ -123,7 +123,7 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
     for (int c = 0; c < 3; c++) {
         bgrChannels[c].convertTo(bgrChannels[c], CV_32FC1, 1 / (255.0 * 0.5), -1.0);
     }
-    const int imageArea = m_inputHeight * this->m_inputWidth;
+    const int imageArea = m_inputHeight * m_inputWidth;
     m_inputImageData.resize(3 * imageArea);
     size_t singleChnSize = imageArea * sizeof(float);
     memcpy(this->m_inputImageData.data(), (float *)bgrChannels[2].data, singleChnSize); /// rgb顺序
@@ -180,12 +180,11 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
     cv::merge(channelMats, resultMat);
     resultMat.convertTo(resultMat, CV_8UC3);
 
-    for (auto &cropMask : cropMaskVec) {
-        cropMask.setTo(0, cropMask < 0);
-        cropMask.setTo(1, cropMask > 1);
-    }
+    auto bestMask = FaceMasker::getBestMask(cropMaskVec);
+    bestMask->setTo(0, *bestMask < 0); // 可有可无，只是保持与python版本的一致性
+    bestMask->setTo(1, *bestMask > 1);
 
-    auto dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, cropMaskVec.at(1),
+    auto dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, *bestMask,
                                           std::get<1>(*cropVisionAndAffineMat));
     dstImage = blendFrame(tempVisionFrame, *dstImage);
 
