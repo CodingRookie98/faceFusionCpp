@@ -9,8 +9,6 @@
  */
 
 #include "face_masker.h"
-#include <iostream>
-#include <fstream>
 
 namespace Ffc {
 std::shared_ptr<cv::Mat>
@@ -40,17 +38,32 @@ FaceMasker::createStaticBoxMask(const cv::Size &cropSize, const float &faceMaskB
 
 FaceMasker::FaceMasker(const std::shared_ptr<Ort::Env> &env,
                        const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
-    OrtSession(env) {
-    m_modelsJson = modelsInfoJson;
+    m_modelsInfoJson(modelsInfoJson) {
+    m_env = env;
+    m_maskerMap = std::make_shared<std::unordered_map<Method, std::shared_ptr<OrtSession>>>();
 }
 
 std::shared_ptr<cv::Mat> FaceMasker::createOcclusionMask(const Typing::VisionFrame &cropVisionFrame) {
-    std::string modelPath = m_modelsJson->at("faceMaskerModels").at("face_occluder").at("path");
-    // Todo 检查model是否存在，若不存在则下载
+    std::string modelPath = m_modelsInfoJson->at("faceMaskerModels").at("face_occluder").at("path");
+    // 检查model是否存在，若不存在则下载
+    if (!FileSystem::fileExists(modelPath)) {
+        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceMaskerModels").at("face_occluder").at("url"),
+                                                               "./models");
+        if (!downloadSuccess) {
+            throw std::runtime_error("Failed to download the model file: " + modelPath);
+        }
+    }
 
-    this->createSession(modelPath);
-    const int inputHeight = m_inputNodeDims[0][1];
-    const int inputWidth = m_inputNodeDims[0][2];
+    std::shared_ptr<OrtSession> session = nullptr;
+    if (!m_maskerMap->contains(Method::Occlusion)) {
+        session = std::make_shared<OrtSession>(m_env);
+        m_maskerMap->emplace(Method::Occlusion, session);
+    } else {
+        session = m_maskerMap->at(Method::Occlusion);
+    }
+    session->createSession(modelPath);
+    const int inputHeight = session->m_inputNodeDims[0][1];
+    const int inputWidth = session->m_inputNodeDims[0][2];
 
     cv::Mat inputImage = cropVisionFrame.clone();
     cv::resize(cropVisionFrame, inputImage, cv::Size(inputHeight, inputWidth));
@@ -76,15 +89,15 @@ std::shared_ptr<cv::Mat> FaceMasker::createOcclusionMask(const Typing::VisionFra
     std::vector<int64_t> inputImageShape{1, inputHeight, inputWidth, 3};
 
     std::vector<Ort::Value> inputTensors;
-    inputTensors.emplace_back(Ort::Value::CreateTensor<float>(m_memoryInfo, inputImageData.data(),
+    inputTensors.emplace_back(Ort::Value::CreateTensor<float>(session->m_memoryInfo, inputImageData.data(),
                                                               inputImageData.size(),
                                                               inputImageShape.data(),
                                                               inputImageShape.size()));
 
     Ort::RunOptions runOptions;
-    std::vector<Ort::Value> outputTensors = m_session->Run(runOptions, m_inputNames.data(),
-                                                           inputTensors.data(), inputTensors.size(),
-                                                           m_outputNames.data(), m_outputNames.size());
+    std::vector<Ort::Value> outputTensors = session->m_session->Run(runOptions, session->m_inputNames.data(),
+                                                                    inputTensors.data(), inputTensors.size(),
+                                                                    session->m_outputNames.data(), session->m_outputNames.size());
 
     float *pdata = outputTensors[0].GetTensorMutableData<float>();
     std::vector<int64_t> outsShape = outputTensors[0].GetTensorTypeAndShapeInfo().GetShape();
@@ -109,12 +122,26 @@ std::shared_ptr<cv::Mat> FaceMasker::createOcclusionMask(const Typing::VisionFra
 
 std::shared_ptr<cv::Mat> FaceMasker::createRegionMask(const Typing::VisionFrame &cropVisionFrame,
                                                       const std::unordered_set<Typing::EnumFaceMaskRegion> &regions) {
-    std::string modelPath = m_modelsJson->at("faceMaskerModels").at("face_parser").at("path");
-    // Todo 检查model是否存在，若不存在则下载
+    std::string modelPath = m_modelsInfoJson->at("faceMaskerModels").at("face_parser").at("path");
+    // 检查model是否存在，若不存在则下载
+    if (!FileSystem::fileExists(modelPath)) {
+        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceMaskerModels").at("face_parser").at("url"),
+                                                               "./models");
+        if (!downloadSuccess) {
+            throw std::runtime_error("Failed to download the model file: " + modelPath);
+        }
+    }
 
-    this->createSession(modelPath);
-    const int inputHeight = m_inputNodeDims[0][2];
-    const int inputWidth = m_inputNodeDims[0][3];
+    std::shared_ptr<OrtSession> session = nullptr;
+    if (!m_maskerMap->contains(Method::Region)) {
+        session = std::make_shared<OrtSession>(m_env);
+        m_maskerMap->emplace(Method::Region, session);
+    } else {
+        session = m_maskerMap->at(Method::Region);
+    }
+    session->createSession(modelPath);
+    const int inputHeight = session->m_inputNodeDims[0][2];
+    const int inputWidth = session->m_inputNodeDims[0][3];
 
     cv::Mat inputImage = cropVisionFrame.clone();
     cv::resize(cropVisionFrame, inputImage, cv::Size(inputHeight, inputWidth));
@@ -133,15 +160,15 @@ std::shared_ptr<cv::Mat> FaceMasker::createRegionMask(const Typing::VisionFrame 
 
     std::vector<int64_t> inputImageShape{1, 3, inputHeight, inputWidth};
     std::vector<Ort::Value> inputTensors;
-    inputTensors.emplace_back(Ort::Value::CreateTensor<float>(m_memoryInfo, inputImageData.data(),
+    inputTensors.emplace_back(Ort::Value::CreateTensor<float>(session->m_memoryInfo, inputImageData.data(),
                                                               inputImageData.size(),
                                                               inputImageShape.data(),
                                                               inputImageShape.size()));
 
     Ort::RunOptions runOptions;
-    std::vector<Ort::Value> outputTensors = m_session->Run(runOptions, m_inputNames.data(),
-                                                           inputTensors.data(), inputTensors.size(),
-                                                           m_outputNames.data(), m_outputNames.size());
+    std::vector<Ort::Value> outputTensors = session->m_session->Run(runOptions, session->m_inputNames.data(),
+                                                                    inputTensors.data(), inputTensors.size(),
+                                                                    session->m_outputNames.data(), session->m_outputNames.size());
 
     float *pdata = outputTensors[0].GetTensorMutableData<float>();
     std::vector<int64_t> outsShape = outputTensors[0].GetTensorTypeAndShapeInfo().GetShape();

@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file           : url_downloader.h
+ * @file           : downloader.h
  * @author         : CodingRookie
  * @brief          : None
  * @attention      : None
@@ -8,14 +8,16 @@
  ******************************************************************************
  */
 
-#ifndef FACEFUSIONCPP_SRC_URL_DOWNLOADER_H_
-#define FACEFUSIONCPP_SRC_URL_DOWNLOADER_H_
+#ifndef FACEFUSIONCPP_SRC_DOWNLOADER_H_
+#define FACEFUSIONCPP_SRC_DOWNLOADER_H_
 
 #include <string>
 #include <iostream>
+#include "file_system.h"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 // windows
+#define NOMINMAX
 #include <windows.h>
 #else
 // POSIX
@@ -26,9 +28,9 @@
 
 namespace Ffc {
 
-class UrlDownloader {
+class Downloader {
 public:
-    static bool downloadFile(const std::string &url, const std::string &outPutDirectory);
+    static bool downloadFileFromURL(const std::string &url, const std::string &outPutDirectory);
 
 private:
 };

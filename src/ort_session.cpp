@@ -16,12 +16,12 @@ OrtSession::OrtSession(const std::shared_ptr<Ort::Env> &env) {
     m_sessionOptions = Ort::SessionOptions();
     m_sessionOptions.SetGraphOptimizationLevel(ORT_ENABLE_BASIC);
     m_cudaProviderOptions = std::make_shared<OrtCUDAProviderOptions>();
-}
-
-void OrtSession::createSession(const std::string &modelPath) {
     // CUDA 加速
     m_cudaProviderOptions->device_id = 0;
     m_sessionOptions.AppendExecutionProvider_CUDA(*m_cudaProviderOptions);
+}
+
+void OrtSession::createSession(const std::string &modelPath) {
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     // windows

@@ -6,7 +6,7 @@
 #include "face_analyser/face_analyser.h"
 #include "face_masker.h"
 #include "globals.h"
-#include "url_downloader.h"
+#include "downloader.h"
 
 int main() {
     std::shared_ptr<Ort::Env> env = std::make_shared<Ort::Env>(Ort::Env(ORT_LOGGING_LEVEL_ERROR, "faceFusionCpp"));
@@ -30,14 +30,13 @@ int main() {
     auto faceAnalyser = std::make_shared<Ffc::FaceAnalyser>(env, modelsInfoJson);
     auto faceMasker = std::make_shared<Ffc::FaceMasker>(env, modelsInfoJson);
 
-    //    Ffc::FaceSwapper faceSwapper(env, faceAnalyser, faceMasker, modelsInfoJson);
-    //    faceSwapper.processImage(Ffc::Globals::sourcePaths, targetPath, swapOutputPath);
+    Ffc::FaceSwapper faceSwapper(env, faceAnalyser, faceMasker, modelsInfoJson);
+    faceSwapper.processImage(Ffc::Globals::sourcePaths, targetPath, swapOutputPath);
 
     Ffc::FaceEnhancer faceEnhancer(env, faceAnalyser, faceMasker, modelsInfoJson);
-    faceEnhancer.setFaceAnalyser(faceAnalyser);
     faceEnhancer.processImage(swapOutputPath, enhanceOutputPath);
 
-    //    Ffc::UrlDownloader::downloadFile("https://github.com/facefusion/facefusion-assets/releases/download/models/yoloface_8n.onnx",
+    //    Ffc::Downloader::downloadFileFromURL("https://github.com/facefusion/facefusion-assets/releases/download/models/yoloface_8n.onnx",
     //                                      "./temp");
 
     return 0;

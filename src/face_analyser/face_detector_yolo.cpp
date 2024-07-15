@@ -26,8 +26,8 @@ void FaceDetectorYolo::preProcess(const VisionFrame &visionFrame, const cv::Size
     cv::Mat tempImage = visionFrame.clone();
     if (height > this->m_inputHeight || width > this->m_inputWidth) {
         const float scale = std::min((float)this->m_inputHeight / height, (float)this->m_inputWidth / width);
-        cv::Size new_size = cv::Size(int(width * scale), int(height * scale));
-        resize(visionFrame, tempImage, new_size);
+        cv::Size newSize = cv::Size(int(width * scale), int(height * scale));
+        resize(visionFrame, tempImage, newSize);
     }
     this->m_ratioHeight = (float)height / (float)tempImage.rows;
     this->m_ratioWidth = (float)width / (float)tempImage.cols;
@@ -108,9 +108,19 @@ FaceDetectorYolo::detect(const VisionFrame &visionFrame, const cv::Size &faceDet
     return result;
 }
 
-FaceDetectorYolo::FaceDetectorYolo(const std::shared_ptr<Ort::Env> &env) :
-    Ffc::FaceAnalyserSession(env, "./models/yoloface_8n.onnx") {
+FaceDetectorYolo::FaceDetectorYolo(const std::shared_ptr<Ort::Env> &env,
+                                   const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
+    OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
+    std::string modelPath = "./models/yoloface_8n.onnx";
+
+    if (!FileSystem::fileExists(modelPath)) {
+        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yoloface").at("url"),
+                                                               "./models");
+        if (!downloadSuccess) {
+            throw std::runtime_error("Failed to download the model file: " + modelPath);
+        }
+    }
+    this->createSession(modelPath);
 }
 
-FaceDetectorYolo::~FaceDetectorYolo() = default;
 } // namespace Ffc

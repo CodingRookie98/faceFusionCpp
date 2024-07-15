@@ -16,13 +16,13 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 #include "typing.h"
-#include "analyser_base.h"
 #include "face_detector_yolo.h"
 #include "face_landmarker_68.h"
 #include "face_landmarker_68_5.h"
 #include "face_recognizer_arc.h"
 #include "globals.h"
 #include "ort_session.h"
+#include "face_detector_gender_age.h"
 
 namespace Ffc {
 
@@ -32,7 +32,8 @@ public:
         DetectWithYoloFace,
         DetectLandmark68,
         DetectLandmark68_5,
-        RecognizeWithArcfaceW600kR50
+        RecognizeWithArcfaceW600kR50,
+        DetectorGenderAge
     };
 
     explicit FaceAnalyser(const std::shared_ptr<Ort::Env> &env, const std::shared_ptr<nlohmann::json> &modelsInfoJson);
@@ -42,13 +43,14 @@ public:
 
     std::shared_ptr<Typing::Faces> getManyFaces(const Typing::VisionFrame &visionFrame);
 
+    std::shared_ptr<Typing::Face> getOneFace(const Typing::VisionFrame &visionFrame, const int &position = 0);
+
 private:
     std::shared_ptr<Ort::Env> m_env;
-    std::shared_ptr<nlohmann::json> m_modelsInfoJson;
 
-    std::unordered_map<Method, std::shared_ptr<AnalyserBase>> m_analyserMap;
+    std::shared_ptr<nlohmann::json> m_modelsInfoJson;
+    std::unordered_map<Method, std::shared_ptr<OrtSession>> m_analyserMap;
     void createAnalyser(const Method &method);
-    Typing::Face getOneFace(const Typing::VisionFrame &visionFrame, const int &position = 0);
     std::shared_ptr<Typing::Faces> createFaces(const Typing::VisionFrame &visionFrame,
                                                const std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                                                                                 std::vector<Typing::FaceLandmark>,

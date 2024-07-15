@@ -15,28 +15,33 @@ FaceEnhancer::FaceEnhancer(const std::shared_ptr<Ort::Env> &env,
                            const std::shared_ptr<FaceAnalyser> &faceAnalyser,
                            const std::shared_ptr<FaceMasker> &faceMasker,
                            const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
-    OrtSession(env) {
+    OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
     m_faceAnalyser = faceAnalyser;
     m_faceMasker = faceMasker;
-    m_modelsJson = modelsInfoJson;
 }
 
 void FaceEnhancer::init() {
-    std::string modelPath = m_modelsJson->at("faceEnhancerModels").at(m_modelName).at("path");
+    std::string modelPath = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("path");
 
-    // Todo 检查modelPath文件是否存在，不存在则下载
-
+    // 检查modelPath文件是否存在，不存在则下载
+    if (!FileSystem::fileExists(modelPath)) {
+        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("url"),
+                                                               "./models");
+        if (!downloadSuccess) {
+            throw std::runtime_error("Failed to download the model file: " + modelPath);
+        }
+    }
     m_inputHeight = (int)m_inputNodeDims[0][2];
     m_inputWidth = (int)m_inputNodeDims[0][3];
 
-    std::string warpTempName = m_modelsJson->at("faceEnhancerModels").at(m_modelName).at("template");
-    auto fVec = m_modelsJson->at("faceHelper").at("warpTemplate").at(warpTempName).get<std::vector<float>>();
+    std::string warpTempName = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("template");
+    auto fVec = m_modelsInfoJson->at("faceHelper").at("warpTemplate").at(warpTempName).get<std::vector<float>>();
     m_warpTemplate.clear();
     for (int i = 0; i < fVec.size(); i += 2) {
         m_warpTemplate.emplace_back(fVec.at(i), fVec.at(i + 1));
     }
 
-    auto iVec = m_modelsJson->at("faceEnhancerModels").at(m_modelName).at("size").get<std::vector<int>>();
+    auto iVec = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("size").get<std::vector<int>>();
     m_size = cv::Size(iVec.at(0), iVec.at(1));
 }
 
@@ -61,9 +66,9 @@ FaceEnhancer::processFrame(const Typing::Faces &referenceFaces,
             }
         }
     } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_One) {
-        // Todo
+        // Todo selectorMode One
     } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
-        // Todo
+        // Todo selectorMode Reference
     }
 
     return resultFrame;
@@ -76,7 +81,7 @@ void FaceEnhancer::setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnal
 std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionFrame) {
     if (m_faceEnhancerModel == nullptr || *m_faceEnhancerModel != Globals::faceEnhancerModel) {
-        // Todo
+        // Todo 完善其他EnhanceModel
         switch (Globals::faceEnhancerModel) {
         case Typing::FE_Gfpgan_14:
             m_modelName = "gfpgan_1.4";
@@ -88,9 +93,16 @@ FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionF
             m_modelName = "gfpgan_1.4";
             break;
         }
-        std::string modelPath = m_modelsJson->at("faceEnhancerModels").at(m_modelName).at("path");
+        std::string modelPath = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("path");
 
-        // Todo 检查modelPath是否存在, 不存在则下载
+        // 检查modelPath是否存在, 不存在则下载
+        if (!FileSystem::fileExists(modelPath)) {
+            bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("url"),
+                                                                   "./models");
+            if (!downloadSuccess) {
+                throw std::runtime_error("Failed to download the model file: " + modelPath);
+            }
+        }
 
         this->createSession(modelPath);
         init();
@@ -109,7 +121,6 @@ FaceEnhancer::blendFrame(const VisionFrame &targetFrame,
 }
 
 std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targetFace, const VisionFrame &tempVisionFrame) {
-    // Todo
     auto cropVisionAndAffineMat = FaceHelper::warpFaceByFaceLandmarks5(tempVisionFrame,
                                                                        targetFace.faceLandMark5_68,
                                                                        m_warpTemplate, m_size);

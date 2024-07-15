@@ -15,15 +15,13 @@
 #include <onnx/onnx_pb.h>
 #include <fstream>
 #include <opencv2/opencv.hpp>
+#include "nlohmann/json.hpp"
 #include "vision.h"
 #include "typing.h"
 #include "face_analyser/face_analyser.h"
 #include "globals.h"
 #include "face_masker.h"
-// #include "face_swapper_base.h"
-// #include "inswapper.h"
 #include "ort_session.h"
-#include "nlohmann/json.hpp"
 
 namespace Ffc {
 
@@ -60,11 +58,11 @@ private:
     getCropMasks(const Typing::VisionFrame &visionFrame, const cv::Size &cropSize,
                  const float &faceMaskBlur, const Typing::Padding &faceMaskPadding);
     std::shared_ptr<std::vector<float>> prepareSourceEmbedding(const Typing::Face &sourceFace);
-    std::shared_ptr<std::vector<float>> prepareCropFrameData(const Typing::VisionFrame &cropFrame);
+    std::shared_ptr<std::vector<float>> prepareCropFrameData(const Typing::VisionFrame &cropFrame) const;
 
     std::shared_ptr<FaceAnalyser> m_faceAnalyser = nullptr;
     std::shared_ptr<FaceMasker> m_faceMasker = nullptr;
-    std::shared_ptr<nlohmann::json> m_modelsJson = nullptr;
+    const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
     std::shared_ptr<Typing::EnumFaceSwapperModel> m_faceSwapperModel = nullptr;
     int m_inputHeight;
     int m_inputWidth;

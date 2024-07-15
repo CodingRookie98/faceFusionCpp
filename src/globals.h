@@ -22,7 +22,11 @@ static std::string outputPath;
 // face analyser
 static float faceDetectorScore = 0.5;
 static float faceLandmarkerScore = 0.5;
-static Typing::EnumFaceDetectModel faceDetectorModel = Typing::EnumFaceDetectModel::FD_Yoloface;
+static std::unordered_set<Typing::EnumFaceDetectModel>
+    faceDetectorModelSet = {Typing::EnumFaceDetectModel::FD_Many,
+                            Typing::EnumFaceDetectModel::FD_Yoloface,
+                            Typing::EnumFaceDetectModel::FD_Scrfd,
+                            Typing::EnumFaceDetectModel::FD_Retinaface};
 static cv::Size faceDetectorSize(640, 640);
 
 // face selector
@@ -34,10 +38,10 @@ static std::unordered_set<Typing::EnumFaceMaskerType>
 static float faceMaskBlur = 0.3;
 static Typing::Padding faceMaskPadding = {0, 0, 0, 0};
 static std::unordered_set<Typing::EnumFaceMaskRegion>
-    faceMaskRegionsSet = {Typing::EnumFaceMaskRegion::LeftEye,
+    faceMaskRegionsSet = {/*Typing::EnumFaceMaskRegion::LeftEye,
                           Typing::EnumFaceMaskRegion::RightEye,
-                          Typing::EnumFaceMaskRegion::Nose
-                          /* Typing::EnumFaceMaskRegion::All*/};
+                          Typing::EnumFaceMaskRegion::Nose*/
+                          Typing::EnumFaceMaskRegion::All};
 
 // Frame Processors
 static std::unordered_set<Typing::EnumFrameProcessor>

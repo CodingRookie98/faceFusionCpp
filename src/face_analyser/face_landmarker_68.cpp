@@ -11,22 +11,33 @@
 #include "face_landmarker_68.h"
 
 namespace Ffc {
-FaceLandmarker68::FaceLandmarker68(const std::shared_ptr<Ort::Env> &env) :
-    FaceAnalyserSession(env, "./models/2dfan4.onnx") {
+FaceLandmarker68::FaceLandmarker68(const std::shared_ptr<Ort::Env> &env, const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
+    OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
+    std::string modelPath = "./models/2dfan4.onnx";
+    // 如果 modelPath不存在则下载
+    if (!FileSystem::fileExists(modelPath)) {
+        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68").at("url"),
+                                                               "./models");
+        if (!downloadSuccess) {
+            throw std::runtime_error("Failed to download the model file: " + modelPath);
+        }
+    }
+
+    this->createSession(modelPath);
 }
 
 std::shared_ptr<std::tuple<Typing::FaceLandmark, Typing::Score>>
 FaceLandmarker68::detect(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
     this->preProcess(visionFrame, boundingBox);
 
-    std::vector<int64_t> input_img_shape = {1, 3, this->m_inputHeight, this->m_inputWidth};
-    Ort::Value input_tensor_ = Ort::Value::CreateTensor<float>(this->m_memoryInfo, this->m_inputImage.data(), this->m_inputImage.size(), input_img_shape.data(), input_img_shape.size());
+    std::vector<int64_t> inputImgShape = {1, 3, this->m_inputHeight, this->m_inputWidth};
+    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(this->m_memoryInfo, this->m_inputData.data(), this->m_inputData.size(), inputImgShape.data(), inputImgShape.size());
 
     Ort::RunOptions runOptions;
-    std::vector<Ort::Value> ort_outputs = this->m_session->Run(runOptions, this->m_inputNames.data(), &input_tensor_, 1, this->m_outputNames.data(), this->m_outputNames.size());
+    std::vector<Ort::Value> ortOutputs = this->m_session->Run(runOptions, this->m_inputNames.data(), &inputTensor, 1, this->m_outputNames.data(), this->m_outputNames.size());
 
-    float *pdata = ort_outputs[0].GetTensorMutableData<float>(); /// 形状是(1, 68, 3), 每一行的长度是3，表示一个关键点坐标x,y和置信度
-    const int numPoints = ort_outputs[0].GetTensorTypeAndShapeInfo().GetShape()[1];
+    float *pdata = ortOutputs[0].GetTensorMutableData<float>(); /// 形状是(1, 68, 3), 每一行的长度是3，表示一个关键点坐标x,y和置信度
+    const int numPoints = ortOutputs[0].GetTensorTypeAndShapeInfo().GetShape()[1];
     std::vector<cv::Point2f> faceLandmark68(numPoints);
     std::vector<Typing::Score> scores(numPoints);
     for (int i = 0; i < numPoints; i++) {
@@ -54,7 +65,7 @@ void FaceLandmarker68::preProcess(const VisionFrame &visionFrame, const Bounding
     float sub_max = std::max(boundingBox.xmax - boundingBox.xmin, boundingBox.ymax - boundingBox.ymin);
     const float scale = 195.f / sub_max;
     const std::vector<float> translation = {(256.f - (boundingBox.xmax + boundingBox.xmin) * scale) * 0.5f, (256.f - (boundingBox.ymax + boundingBox.ymin) * scale) * 0.5f};
-   
+
     auto cropVisionFrameAndAffineMat = FaceHelper::warpFaceByTranslation(visionFrame, translation,
                                                                          scale, cv::Size{256, 256});
     cv::Mat cropImg = std::get<0>(*cropVisionFrameAndAffineMat);
@@ -67,18 +78,11 @@ void FaceLandmarker68::preProcess(const VisionFrame &visionFrame, const Bounding
         bgrChannels[c].convertTo(bgrChannels[c], CV_32FC1, 1 / 255.0);
     }
 
-    const int image_area = this->m_inputHeight * this->m_inputWidth;
-    this->m_inputImage.resize(3 * image_area);
-    const size_t single_chn_size = image_area * sizeof(float);
-    const float *src_ptrs[] = {
-        reinterpret_cast<const float *>(bgrChannels[0].data),
-        reinterpret_cast<const float *>(bgrChannels[1].data),
-        reinterpret_cast<const float *>(bgrChannels[2].data)};
-
-    float *dst_ptr = this->m_inputImage.data();
-    for (auto &src_ptr : src_ptrs) {
-        std::memcpy(dst_ptr, src_ptr, single_chn_size);
-        dst_ptr += image_area;
-    }
+    const int imageArea = this->m_inputHeight * this->m_inputWidth;
+    this->m_inputData.resize(3 * imageArea);
+    const size_t singleChnSize = imageArea * sizeof(float);
+    memcpy(this->m_inputData.data(), (float *)bgrChannels[0].data, singleChnSize);
+    memcpy(this->m_inputData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
+    memcpy(this->m_inputData.data() + imageArea * 2, (float *)bgrChannels[2].data, singleChnSize);
 }
 } // namespace Ffc

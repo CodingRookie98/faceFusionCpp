@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file           : url_downloader.cpp
+ * @file           : downloader.cpp
  * @author         : CodingRookie
  * @brief          : None
  * @attention      : None
@@ -8,12 +8,12 @@
  ******************************************************************************
  */
 
-#include "url_downloader.h"
+#include "downloader.h"
 
 namespace Ffc {
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-bool UrlDownloader::downloadFile(const std::string &url, const std::string &outPutDirectory) {
+bool Downloader::downloadFileFromURL(const std::string &url, const std::string &outPutDirectory) {
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
     ZeroMemory(&si, sizeof(si));
@@ -21,7 +21,7 @@ bool UrlDownloader::downloadFile(const std::string &url, const std::string &outP
     ZeroMemory(&pi, sizeof(pi));
 
     std::string command;
-    command = command + "wget2" + " -P " + outPutDirectory + " " + url;
+    command = command + "./wget2.exe" + " -P " + outPutDirectory + " " + url;
 
     // Convert string to LPSTR
     char *commandLine = new char[command.size() + 1];
@@ -44,21 +44,26 @@ bool UrlDownloader::downloadFile(const std::string &url, const std::string &outP
         // Close process and thread handles.
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
+        delete[] commandLine;
+        if (FileSystem::fileExists(outPutDirectory + "/" + FileSystem::getFileNameFromURL(url))
+            && FileSystem::getFileSize(outPutDirectory + "/" + FileSystem::getFileNameFromURL(url)) > 0) {
+            return true;
+        } else {
+            return false;
+        }
     } else {
-        std::cerr << "CreateProcess failed (" << GetLastError() << ").\n";
+        delete[] commandLine;
+        throw std::runtime_error("Create Process For Download File From " + url + " failed.");
     }
-
-    delete[] commandLine;
-    return 0;
 }
 #else
-bool UrlDownloader::downloadFile(const std::string &url, const std::string &outPutDirectory) {
+bool Downloader::downloadFileFromURL(const std::string &url, const std::string &outPutDirectory) {
     pid_t pid = fork();
 
     if (pid == 0) {
         // Child process
         const char *program = "./wget";
-        const char *arguments[] = {program, "-P ", outPutDirectory.c_str(), " ",url.c_str(), nullptr};
+        const char *arguments[] = {program, "-P ", outPutDirectory.c_str(), " ", url.c_str(), nullptr};
 
         execvp(program, const_cast<char *const *>(arguments));
 

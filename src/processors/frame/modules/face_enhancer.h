@@ -39,7 +39,7 @@ private:
     std::shared_ptr<Typing::VisionFrame> enhanceFace(const Typing::Face &targetFace,
                                                      const Typing::VisionFrame &tempVisionFrame);
     static std::shared_ptr<Typing::VisionFrame> blendFrame(const Typing::VisionFrame &targetFrame,
-                                                    const Typing::VisionFrame &pasteVisionFrame);
+                                                           const Typing::VisionFrame &pasteVisionFrame);
     std::shared_ptr<Typing::VisionFrame> applyEnhance(const Typing::Face &targetFace,
                                                       const Typing::VisionFrame &tempVisionFrame);
 
@@ -48,7 +48,7 @@ private:
     std::vector<float> m_inputImageData;
     std::shared_ptr<FaceAnalyser> m_faceAnalyser;
     std::shared_ptr<FaceMasker> m_faceMasker;
-    std::shared_ptr<nlohmann::json> m_modelsJson;
+    const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
     std::string m_modelName;
     std::vector<cv::Point2f> m_warpTemplate;
     cv::Size m_size;

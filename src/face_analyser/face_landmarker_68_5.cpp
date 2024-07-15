@@ -8,13 +8,21 @@
  ******************************************************************************
  */
 
-#include <fstream>
-#include <nlohmann/json.hpp>
 #include "face_landmarker_68_5.h"
 
 namespace Ffc {
-FaceLandmarker68_5::FaceLandmarker68_5(const std::shared_ptr<Ort::Env> &env) :
-    Ffc::FaceAnalyserSession(env, "./models/face_landmarker_68_5.onnx") {
+FaceLandmarker68_5::FaceLandmarker68_5(const std::shared_ptr<Ort::Env> &env, const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
+    OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
+    std::string modelPath = "./models/face_landmarker_68_5.onnx";
+    // 如果 modelPath不存在则下载
+    if (!FileSystem::fileExists(modelPath)) {
+        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68").at("url"),
+                                                               "./models");
+        if (!downloadSuccess) {
+            throw std::runtime_error("Failed to download the model file: " + modelPath);
+        }
+    }
+    this->createSession(modelPath);
 }
 
 void FaceLandmarker68_5::preProcess(const FaceLandmark &faceLandmark5) {
@@ -22,16 +30,9 @@ void FaceLandmarker68_5::preProcess(const FaceLandmark &faceLandmark5) {
     m_inputWidth = m_inputNodeDims[0][2];
     Ffc::Typing::FaceLandmark landmark5 = faceLandmark5;
 
-    // Todo
-    auto modelsInfoJson = std::make_shared<nlohmann::json>();
-    std::ifstream file("./modelsInfo.json");
-    if (file.is_open()) {
-        file >> *modelsInfoJson;
-        file.close();
-    }
-    std::vector<float> fVec = modelsInfoJson->at("faceHelper").at("warpTemplate").at("ffhq_512").get<std::vector<float>>();
+    std::vector<float> fVec = m_modelsInfoJson->at("faceHelper").at("warpTemplate").at("ffhq_512").get<std::vector<float>>();
     std::vector<cv::Point2f> warpTemplate;
-    for (int i = 0; i < fVec.size();  i += 2) {
+    for (int i = 0; i < fVec.size(); i += 2) {
         warpTemplate.emplace_back(fVec.at(i), fVec.at(i + 1));
     }
 

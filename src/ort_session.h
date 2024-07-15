@@ -18,12 +18,12 @@ namespace Ffc {
 
 class OrtSession {
 public:
-    OrtSession(const std::shared_ptr<Ort::Env> &env);
-    ~OrtSession() = default;
+    explicit OrtSession(const std::shared_ptr<Ort::Env> &env);
+    virtual ~OrtSession() = default;
 
     void createSession(const std::string &modelPath);
-    // protected:
 
+    // protected:
     std::shared_ptr<Ort::Env> m_env;
     std::shared_ptr<Ort::Session> m_session;
     Ort::SessionOptions m_sessionOptions;
