@@ -153,4 +153,46 @@ FaceHelper::pasteBack(const cv::Mat &tempVisionFrame, const cv::Mat &cropVisionF
     pasteVisionFrame.convertTo(pasteVisionFrame, CV_8UC3);
     return std::make_shared<Typing::VisionFrame>(std::move(pasteVisionFrame));
 }
+
+std::vector<std::array<int, 2>>
+FaceHelper::createStaticAnchors(const int &featureStride, const int &anchorTotal,
+                                const int &strideHeight, const int &strideWidth) {
+    std::vector<std::array<int, 2>> anchors;
+
+    // Create a grid of (y, x) coordinates
+    for (int i = 0; i < strideHeight; ++i) {
+        for (int j = 0; j < strideWidth; ++j) {
+            // Compute the original image coordinates
+            int y = i * featureStride;
+            int x = j * featureStride;
+
+            // Add each anchor for the current grid point
+            for (int k = 0; k < anchorTotal; ++k) {
+                anchors.push_back({y, x});
+            }
+        }
+    }
+
+    return anchors;
+}
+
+std::shared_ptr<Typing::BoundingBox> FaceHelper::distance2BoundingBox(const std::array<int, 2> &anchor, const BoundingBox &boundingBox) {
+    Typing::BoundingBox result;
+    result.xmin = anchor[1] - boundingBox.xmin;
+    result.ymin = anchor[0] - boundingBox.ymin;
+    result.xmax = anchor[1] + boundingBox.xmax;
+    result.ymax = anchor[0] + boundingBox.ymax;
+    return std::make_shared<Typing::BoundingBox>(result);
+}
+
+std::shared_ptr<Typing::FaceLandmark>
+FaceHelper::distance2FaceLandmark5(const std::array<int, 2> &anchor, const FaceLandmark &faceLandmark5) {
+    Typing::FaceLandmark faceLandmark5_;
+    faceLandmark5_.resize(5);
+    for (int i = 0; i < 5; ++i) {
+        faceLandmark5_[i].x = faceLandmark5[i].x + anchor[1];
+        faceLandmark5_[i].y = faceLandmark5[i].y + anchor[0];
+    }
+    return std::make_shared<Typing::FaceLandmark>(faceLandmark5_);
+}
 } // namespace Ffc

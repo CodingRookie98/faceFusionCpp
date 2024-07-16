@@ -60,13 +60,16 @@ FaceEnhancer::processFrame(const Typing::Faces &referenceFaces,
     std::shared_ptr<Typing::VisionFrame> resultFrame = std::make_shared<Typing::VisionFrame>(targetFrame);
     if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Many) {
         auto manyTargetFaces = m_faceAnalyser->getManyFaces(targetFrame);
-        if (!manyTargetFaces->empty()) {
+        if (manyTargetFaces != nullptr && !manyTargetFaces->empty()) {
             for (auto &targetFace : *manyTargetFaces) {
                 resultFrame = enhanceFace(targetFace, *resultFrame);
             }
         }
     } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_One) {
-        // Todo selectorMode One
+        auto targrtFace = m_faceAnalyser->getOneFace(targetFrame);
+        if (targrtFace != nullptr) {
+            resultFrame = enhanceFace(*targrtFace, *resultFrame);
+        }
     } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
         // Todo selectorMode Reference
     }

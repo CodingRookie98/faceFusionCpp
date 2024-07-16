@@ -11,4 +11,10 @@ target_sources(${ProgramName} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/face_recognizer_arc.h
         ${CMAKE_CURRENT_SOURCE_DIR}/face_detector_gender_age.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/face_detector_gender_age.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/face_detector_scrfd.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/face_detector_scrfd.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/face_detector_retina.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/face_detector_retina.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/face_detector_yunet.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/face_detector_yunet.h
 )

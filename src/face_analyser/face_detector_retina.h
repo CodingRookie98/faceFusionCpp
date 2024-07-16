@@ -1,33 +1,32 @@
 /**
  ******************************************************************************
- * @file           : face_yolov_8.h
+ * @file           : face_detector_retina.h
  * @author         : CodingRookie
  * @brief          : None
  * @attention      : None
- * @date           : 24-7-4
+ * @date           : 24-7-16
  ******************************************************************************
  */
 
-#ifndef FACEFUSIONCPP_SRC_FACE_ANALYSER_FACE_DETECTOR_YOLO_H_
-#define FACEFUSIONCPP_SRC_FACE_ANALYSER_FACE_DETECTOR_YOLO_H_
+#ifndef FACEFUSIONCPP_SRC_FACE_ANALYSER_FACE_DETECTOR_RETINA_H_
+#define FACEFUSIONCPP_SRC_FACE_ANALYSER_FACE_DETECTOR_RETINA_H_
 
-#include <opencv2/opencv.hpp>
 #include <nlohmann/json.hpp>
-#include "typing.h"
 #include "ort_session.h"
-#include "face_helper.h"
-#include "globals.h"
-#include "vision.h"
-#include "file_system.h"
+#include "typing.h"
+#include "filesystem"
 #include "downloader.h"
+#include "vision.h"
+#include "globals.h"
+#include "face_helper.h"
 
 namespace Ffc {
 
-class FaceDetectorYolo : public OrtSession {
+class FaceDetectorRetina : public OrtSession {
 public:
-    explicit FaceDetectorYolo(const std::shared_ptr<Ort::Env> &env,
-                              const std::shared_ptr<nlohmann::json> &modelsInfoJson);
-    ~FaceDetectorYolo() override = default;
+    FaceDetectorRetina(const std::shared_ptr<Ort::Env> &env,
+                      const std::shared_ptr<nlohmann::json> &modelsInfoJson);
+    ~FaceDetectorRetina() override = default;
 
     std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                                std::vector<Typing::FaceLandmark>,
@@ -36,14 +35,17 @@ public:
 
 private:
     void preProcess(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize);
+    const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
     std::vector<float> m_inputData;
     int m_inputHeight{};
     int m_inputWidth{};
     float m_ratioHeight;
     float m_ratioWidth;
-    const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
+    const std::vector<int> m_featureStrides = {8, 16, 32};
+    const int m_featureMapChannel = 3;
+    const int m_anchorTotal = 2;
 };
 
 } // namespace Ffc
 
-#endif // FACEFUSIONCPP_SRC_FACE_ANALYSER_FACE_DETECTOR_YOLO_H_
+#endif // FACEFUSIONCPP_SRC_FACE_ANALYSER_FACE_DETECTOR_RETINA_H_

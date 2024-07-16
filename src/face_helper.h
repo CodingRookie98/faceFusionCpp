@@ -41,6 +41,13 @@ public:
     static std::shared_ptr<Typing::FaceLandmark> convertFaceLandmark68To5(const Typing::FaceLandmark &faceLandmark68);
 
     static std::shared_ptr<Typing::VisionFrame> pasteBack(const cv::Mat &tempVisionFrame, const cv::Mat &cropVisionFrame, const cv::Mat &cropMask, const cv::Mat &affineMatrix);
+    static std::vector<std::array<int, 2>>
+    createStaticAnchors(const int &featureStride, const int &anchorTotal,
+                        const int &strideHeight, const int &strideWidth);
+    static std::shared_ptr<Typing::BoundingBox>
+    distance2BoundingBox(const std::array<int, 2> &anchor, const Typing::BoundingBox &boundingBox);
+    static std::shared_ptr<Typing::FaceLandmark>
+    distance2FaceLandmark5(const std::array<int, 2> &anchor, const Typing::FaceLandmark &faceLandmark5);
 
 private:
     static float getIoU(const BoundingBox &box1, const BoundingBox &box2);

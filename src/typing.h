@@ -91,9 +91,10 @@ static const std::unordered_map<std::string, const EnumFaceMaskRegion> faceMaskR
     {"lower-lip", EnumFaceMaskRegion::LowerLip}};
 enum EnumFaceDetectModel {
     FD_Many,
-    FD_Retinaface,
+    FD_Retina,
     FD_Scrfd,
-    FD_Yoloface
+    FD_Yoloface,
+    FD_Yunet
 };
 enum EnumFaceSelectorMode {
     FS_Many,

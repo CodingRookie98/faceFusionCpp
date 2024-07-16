@@ -23,10 +23,12 @@ static std::string outputPath;
 static float faceDetectorScore = 0.5;
 static float faceLandmarkerScore = 0.5;
 static std::unordered_set<Typing::EnumFaceDetectModel>
-    faceDetectorModelSet = {Typing::EnumFaceDetectModel::FD_Many,
-                            Typing::EnumFaceDetectModel::FD_Yoloface,
-                            Typing::EnumFaceDetectModel::FD_Scrfd,
-                            Typing::EnumFaceDetectModel::FD_Retinaface};
+    faceDetectorModelSet = {/*Typing::EnumFaceDetectModel::FD_Many,*/
+                            //                            Typing::EnumFaceDetectModel::FD_Yoloface,
+                            //                            Typing::EnumFaceDetectModel::FD_Scrfd,
+                            //                            Typing::EnumFaceDetectModel::FD_Retina,
+                            Typing::EnumFaceDetectModel::FD_Yunet
+};
 static cv::Size faceDetectorSize(640, 640);
 
 // face selector

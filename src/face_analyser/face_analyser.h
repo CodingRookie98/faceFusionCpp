@@ -23,6 +23,9 @@
 #include "globals.h"
 #include "ort_session.h"
 #include "face_detector_gender_age.h"
+#include "face_detector_scrfd.h"
+#include "face_detector_retina.h"
+#include "face_detector_yunet.h"
 
 namespace Ffc {
 
@@ -30,6 +33,9 @@ class FaceAnalyser {
 public:
     enum Method {
         DetectWithYoloFace,
+        DetectWithScrfd,
+        DetectWithRetina,
+        DetectWithYunet,
         DetectLandmark68,
         DetectLandmark68_5,
         RecognizeWithArcfaceW600kR50,
@@ -61,7 +67,22 @@ private:
                                std::vector<Typing::FaceLandmark>,
                                std::vector<Typing::Score>>>
     detectWithYoloFace(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize);
-
+    
+    std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
+                               std::vector<Typing::FaceLandmark>,
+                               std::vector<Typing::Score>>>
+    detectWithScrfd(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize);
+    
+    std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
+                               std::vector<Typing::FaceLandmark>,
+                               std::vector<Typing::Score>>>
+    detectWithRetina(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize);
+    
+    std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
+                               std::vector<Typing::FaceLandmark>,
+                               std::vector<Typing::Score>>>
+    detectWithYunet(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize);
+    
     std::shared_ptr<std::tuple<Typing::FaceLandmark,
                                Typing::Score>>
     detectLandmark68(const Typing::VisionFrame &visionFrame,

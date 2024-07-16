@@ -26,6 +26,15 @@ void FaceAnalyser::createAnalyser(const FaceAnalyser::Method &method) {
     case DetectWithYoloFace:
         analyserPtr = std::make_shared<FaceDetectorYolo>(m_env, m_modelsInfoJson);
         break;
+    case DetectWithScrfd:
+        analyserPtr = std::make_shared<FaceDetectorScrfd>(m_env, m_modelsInfoJson);
+        break;
+    case DetectWithRetina:
+        analyserPtr = std::make_shared<FaceDetectorRetina>(m_env, m_modelsInfoJson);
+        break;
+    case DetectWithYunet:
+        analyserPtr = std::make_shared<FaceDetectorYunet>(m_env, m_modelsInfoJson);
+        break;
     case DetectLandmark68:
         analyserPtr = std::make_shared<FaceLandmarker68>(m_env, m_modelsInfoJson);
         break;
@@ -111,16 +120,53 @@ std::shared_ptr<Typing::Face> FaceAnalyser::getOneFace(const Typing::VisionFrame
 }
 
 std::shared_ptr<Typing::Faces> FaceAnalyser::getManyFaces(const Typing::VisionFrame &visionFrame) {
-    if (Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)) {
-    } else {
+    std::vector<Typing::BoundingBox> resultBoundingBoxes, boundingBoxes;
+    std::vector<Typing::FaceLandmark> resultLandmarks5, landmarks5;
+    std::vector<Typing::Score> resultScores, scores;
+    std::shared_ptr<Typing::Faces> resultFaces = std::make_shared<Typing::Faces>();
+    if (Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yoloface)) {
+        auto result = this->detectWithYoloFace(visionFrame, Globals::faceDetectorSize);
+        std::tie(boundingBoxes, landmarks5, scores) = *result;
+        resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+        resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
+        resultScores.insert(resultScores.end(), scores.begin(), scores.end());
+    }
+    if (Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Scrfd)) {
+        auto result = this->detectWithScrfd(visionFrame, Globals::faceDetectorSize);
+        std::tie(boundingBoxes, landmarks5, scores) = *result;
+        resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+        resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
+        resultScores.insert(resultScores.end(), scores.begin(), scores.end());
+    }
+    if (Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Retina)) {
+        auto result = this->detectWithRetina(visionFrame, Globals::faceDetectorSize);
+        std::tie(boundingBoxes, landmarks5, scores) = *result;
+        resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+        resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
+        resultScores.insert(resultScores.end(), scores.begin(), scores.end());
+    }
+    if (Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yunet)) {
+        auto result = this->detectWithYunet(visionFrame, Globals::faceDetectorSize);
+        std::tie(boundingBoxes, landmarks5, scores) = *result;
+        resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+        resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
+        resultScores.insert(resultScores.end(), scores.begin(), scores.end());
     }
 
-    auto result = this->detectWithYoloFace(visionFrame, Globals::faceDetectorSize);
-    auto faces = this->createFaces(visionFrame, result);
+    if (!resultBoundingBoxes.empty() && !resultLandmarks5.empty() && !resultScores.empty()) {
+        resultFaces = createFaces(visionFrame, std::make_shared<std::tuple<std::vector<Typing::BoundingBox>,
+                                                                           std::vector<Typing::FaceLandmark>,
+                                                                           std::vector<Typing::Score>>>(
+                                                   std::make_tuple(resultBoundingBoxes, resultLandmarks5, resultScores)));
+    }
 
     // Todo 对faces排序以及按照年龄和性别筛选
 
-    return faces;
+    return resultFaces;
 }
 
 std::shared_ptr<Typing::FaceLandmark>
@@ -229,5 +275,38 @@ FaceAnalyser::detectGenderAge(const VisionFrame &visionFrame, const BoundingBox 
 
     auto detectorGenderAge = std::dynamic_pointer_cast<FaceDetectorGenderAge>(m_analyserMap.at(DetectorGenderAge));
     return detectorGenderAge->detect(visionFrame, boundingBox);
+}
+
+std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
+                           std::vector<Typing::FaceLandmark>,
+                           std::vector<Typing::Score>>>
+FaceAnalyser::detectWithScrfd(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
+    if (!m_analyserMap.contains(DetectWithScrfd)) {
+        createAnalyser(DetectWithScrfd);
+    }
+    auto detectorScrfd = std::dynamic_pointer_cast<FaceDetectorScrfd>(m_analyserMap.at(DetectWithScrfd));
+    return detectorScrfd->detect(visionFrame, faceDetectorSize);
+}
+
+std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
+                           std::vector<Typing::FaceLandmark>,
+                           std::vector<Typing::Score>>>
+FaceAnalyser::detectWithRetina(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
+    if (!m_analyserMap.contains(DetectWithRetina)) {
+        createAnalyser(DetectWithRetina);
+    }
+    auto detectorRetina = std::dynamic_pointer_cast<FaceDetectorRetina>(m_analyserMap.at(DetectWithRetina));
+    return detectorRetina->detect(visionFrame, faceDetectorSize);
+}
+
+std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
+                           std::vector<Typing::FaceLandmark>,
+                           std::vector<Typing::Score>>>
+FaceAnalyser::detectWithYunet(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
+    if (!m_analyserMap.contains(DetectWithYunet)) {
+        createAnalyser(DetectWithYunet);
+    }
+    auto detectorYunet = std::dynamic_pointer_cast<FaceDetectorYunet>(m_analyserMap.at(DetectWithYunet));
+    return detectorYunet->detect(visionFrame, faceDetectorSize);
 }
 } // namespace Ffc

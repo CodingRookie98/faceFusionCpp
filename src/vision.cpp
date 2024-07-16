@@ -31,8 +31,8 @@ Typing::VisionFrame Vision::resizeFrameResolution(const Typing::VisionFrame &vis
     cv::Mat tempImage = visionFrame.clone();
     if (height > cropSize.height || width > cropSize.width) {
         const float scale = std::min((float)cropSize.height / height, (float)cropSize.width / width);
-        cv::Size new_size = cv::Size(int(width * scale), int(height * scale));
-        cv::resize(visionFrame, tempImage, new_size);
+        cv::Size newSize = cv::Size(int(width * scale), int(height * scale));
+        cv::resize(visionFrame, tempImage, newSize);
     }
     return tempImage;
 }
