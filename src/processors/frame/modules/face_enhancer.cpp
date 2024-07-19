@@ -14,8 +14,9 @@ namespace Ffc {
 FaceEnhancer::FaceEnhancer(const std::shared_ptr<Ort::Env> &env,
                            const std::shared_ptr<FaceAnalyser> &faceAnalyser,
                            const std::shared_ptr<FaceMasker> &faceMasker,
-                           const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
-    OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
+                           const std::shared_ptr<nlohmann::json> &modelsInfoJson,
+                           const std::shared_ptr<const Config> &config) :
+    OrtSession(env), m_modelsInfoJson(modelsInfoJson), m_config(config) {
     m_faceAnalyser = faceAnalyser;
     m_faceMasker = faceMasker;
 }
@@ -58,19 +59,19 @@ std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::processFrame(const Typing::Faces &referenceFaces,
                            const Typing::VisionFrame &targetFrame) {
     std::shared_ptr<Typing::VisionFrame> resultFrame = std::make_shared<Typing::VisionFrame>(targetFrame);
-    if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Many) {
+    if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Many) {
         auto manyTargetFaces = m_faceAnalyser->getManyFaces(targetFrame);
         if (manyTargetFaces != nullptr && !manyTargetFaces->empty()) {
             for (auto &targetFace : *manyTargetFaces) {
                 resultFrame = enhanceFace(targetFace, *resultFrame);
             }
         }
-    } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_One) {
+    } else if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_One) {
         auto targrtFace = m_faceAnalyser->getOneFace(targetFrame);
         if (targrtFace != nullptr) {
             resultFrame = enhanceFace(*targrtFace, *resultFrame);
         }
-    } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
+    } else if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
         // Todo selectorMode Reference
     }
 
@@ -83,13 +84,13 @@ void FaceEnhancer::setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnal
 
 std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionFrame) {
-    if (m_faceEnhancerModel == nullptr || *m_faceEnhancerModel != Globals::faceEnhancerModel) {
+    if (m_faceEnhancerModel == nullptr || *m_faceEnhancerModel != m_config->m_faceEnhancerModel) {
         // Todo 完善其他EnhanceModel
-        switch (Globals::faceEnhancerModel) {
-        case Typing::FE_Gfpgan_14:
+        switch (m_config->m_faceEnhancerModel) {
+        case Typing::FEM_Gfpgan_14:
             m_modelName = "gfpgan_1.4";
             break;
-        case Typing::FE_CodeFormer:
+        case Typing::FEM_CodeFormer:
             m_modelName = "codeformer";
             break;
         default:
@@ -117,7 +118,7 @@ FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionF
 std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::blendFrame(const VisionFrame &targetFrame,
                          const VisionFrame &pasteVisionFrame) {
-    const float faceEnhancerBlend = 1 - ((float)Globals::faceEnhancerBlend / 100.f);
+    const float faceEnhancerBlend = 1 - ((float)m_config->m_faceEnhancerBlend / 100.f);
     cv::Mat dstimg;
     cv::addWeighted(targetFrame, faceEnhancerBlend, pasteVisionFrame, 1 - faceEnhancerBlend, 0, dstimg);
     return std::make_shared<Typing::VisionFrame>(std::move(dstimg));
@@ -128,7 +129,7 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
                                                                        targetFace.faceLandMark5_68,
                                                                        m_warpTemplate, m_size);
     auto cropBoxMask = FaceMasker::createStaticBoxMask(std::get<0>(*cropVisionAndAffineMat).size(),
-                                                       Globals::faceMaskBlur, Globals::faceMaskPadding);
+                                                       m_config->m_faceMaskBlur, m_config->m_faceMaskPadding);
     auto cropOcclusionMask = m_faceMasker->createOcclusionMask(std::get<0>(*cropVisionAndAffineMat));
     std::vector<cv::Mat> cropMaskVec{*cropBoxMask, *cropOcclusionMask};
 

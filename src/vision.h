@@ -13,6 +13,7 @@
 
 #include <opencv2/opencv.hpp>
 #include "typing.h"
+#include "file_system.h"
 
 namespace Ffc {
 
@@ -23,6 +24,7 @@ public:
     static Typing::VisionFrame
     resizeFrameResolution(const Typing::VisionFrame &visionFrame, const cv::Size &cropSize);
     static bool writeImage(const cv::Mat &image, const std::string &imagePath);
+    static cv::Size unpackResolution(const std::string& resolution);
 };
 
 } // namespace Ffc

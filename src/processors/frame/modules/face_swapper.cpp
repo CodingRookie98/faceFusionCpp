@@ -14,17 +14,20 @@ namespace Ffc {
 FaceSwapper::FaceSwapper(const std::shared_ptr<Ort::Env> &env,
                          const std::shared_ptr<FaceAnalyser> &faceAnalyser,
                          const std::shared_ptr<FaceMasker> &faceMasker,
-                         const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
-    OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
+                         const std::shared_ptr<nlohmann::json> &modelsInfoJson,
+                         const std::shared_ptr<const Config> &config) :
+    OrtSession(env), m_modelsInfoJson(modelsInfoJson), m_config(config) {
     m_faceAnalyser = faceAnalyser;
     m_faceMasker = faceMasker;
 }
 
-void FaceSwapper::processImage(const std::vector<std::string> &sourcePaths,
+void FaceSwapper::processImage(const std::unordered_set<std::string> &sourcePaths,
                                const std::string &targetPath,
                                const std::string &outputPath) {
     Typing::Faces referenceFaces;
-    std::vector<cv::Mat> sourceFrames = Ffc::Vision::readStaticImages(sourcePaths);
+
+    std::vector<std::string> sourcePathsVector(sourcePaths.begin(), sourcePaths.end());
+    std::vector<cv::Mat> sourceFrames = Ffc::Vision::readStaticImages(sourcePathsVector);
     std::shared_ptr<Typing::Face> sourceFace = m_faceAnalyser->getAverageFace(sourceFrames);
     auto targetFrame = Ffc::Vision::readStaticImage(targetPath);
 
@@ -40,20 +43,21 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::processFrame(const Typing::Fac
     }
 
     std::shared_ptr<Typing::VisionFrame> resultFrame = std::make_shared<Typing::VisionFrame>(targetFrame);
-    if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Many) {
+    if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Many) {
         auto manyTargetFaces = m_faceAnalyser->getManyFaces(targetFrame);
         if (manyTargetFaces != nullptr && !manyTargetFaces->empty()) {
             for (auto &targetFace : *manyTargetFaces) {
                 resultFrame = swapFace(sourceFace, targetFace, *resultFrame);
             }
         }
-    } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_One) {
+    } else if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_One) {
         auto targetFace = m_faceAnalyser->getOneFace(targetFrame);
         if (targetFace != nullptr) {
             resultFrame = swapFace(sourceFace, *targetFace, *resultFrame);
         }
-    } else if (Globals::faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
+    } else if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
         // Todo Reference
+        int a = 0;
     }
 
     return resultFrame;
@@ -62,18 +66,36 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::processFrame(const Typing::Fac
 std::shared_ptr<Typing::VisionFrame> FaceSwapper::swapFace(const Face &sourceFace,
                                                            const Face &targetFace,
                                                            const VisionFrame &targetFrame) {
-    if (m_faceSwapperModel == nullptr || *m_faceSwapperModel != Globals::faceSwapperModel) {
-        m_faceSwapperModel = std::make_shared<Typing::EnumFaceSwapperModel>(Globals::faceSwapperModel);
-        switch (Globals::faceSwapperModel) {
-        case Typing::InSwapper_128:
+    if (m_faceSwapperModel == nullptr || *m_faceSwapperModel != m_config->m_faceSwapperModel) {
+        m_faceSwapperModel = std::make_shared<Typing::EnumFaceSwapperModel>(m_config->m_faceSwapperModel);
+        switch (m_config->m_faceSwapperModel) {
+        case Typing::FSM_Inswapper_128:
             m_modelName = "inswapper_128";
             break;
-        case Typing::InSwapper_128_fp16:
+        case Typing::FSM_Inswapper_128_fp16:
             m_modelName = "inswapper_128_fp16";
+            break;
+        case Typing::FSM_Blendswap_256:
+            m_modelName = "blendswap_256";
+            break;
+        case Typing::FSM_Simswap_256:
+            m_modelName = "simswap_256";
+            break;
+        case Typing::FSM_Simswap_512_unofficial:
+            m_modelName = "simswap_512_unofficial";
+            break;
+        case Typing::FSM_Uniface_256:
+            m_modelName = "uniface_256";
             break;
         default:
             break;
         }
+
+        if (m_modelName.empty()) {
+            std::cerr << "Invalid face swapper model, supported models: blendswap_256 inswapper_128 inswapper_128_fp16 simswap_256 simswap_512_unofficial uniface_256" << std::endl;
+            throw std::runtime_error("Invalid face swapper model, supported models: blendswap_256 inswapper_128 inswapper_128_fp16 simswap_256 simswap_512_unofficial uniface_256");
+        }
+
         std::string modelPath = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("path");
 
         // 检查modelPath是否存在, 不存在则下载
@@ -84,10 +106,11 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::swapFace(const Face &sourceFac
                 throw std::runtime_error("Failed to download the model file: " + modelPath);
             }
         }
-        
+
         if (m_modelName == "inswapper_128" || m_modelName == "inswapper_128_fp16") {
             // Load ONNX model as a protobuf message
             onnx::ModelProto modelProto;
+            std::string model128Path = m_modelsInfoJson->at("faceSwapperModels").at("inswapper_128").at("path");
             std::ifstream input(modelPath, std::ios::binary);
             if (!modelProto.ParseFromIstream(&input)) {
                 throw std::runtime_error("Failed to load model.");
@@ -96,7 +119,14 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::swapFace(const Face &sourceFac
             const onnx::TensorProto &initializer = modelProto.graph().initializer(modelProto.graph().initializer_size() - 1);
             // Convert initializer to an array
             m_initializerArray.clear();
-            m_initializerArray.assign(initializer.float_data().begin(), initializer.float_data().end());
+            if (m_modelName == "inswapper_128") {
+                m_initializerArray.assign(initializer.float_data().begin(), initializer.float_data().end());
+            } else {
+                // fp_16
+                std::string rawData = initializer.raw_data();
+                auto data = reinterpret_cast<const float *>(rawData.data());
+                m_initializerArray.assign(data, data + rawData.size() / sizeof(float));
+            }
         } else {
             m_initializerArray.clear();
         }
@@ -131,9 +161,15 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
         targetFrame, targetFace.faceLandMark5_68, m_warpTemplate, m_size);
     auto preparedTargetFrameBGR = Ffc::FaceSwapper::prepareCropVisionFrame(std::get<0>(*croppedTargetFrameAndAffineMat), m_mean, m_standardDeviation);
 
-    auto cropMasks = Ffc::FaceSwapper::getCropMasks(std::get<0>(*croppedTargetFrameAndAffineMat),
-                                                    std::get<0>(*croppedTargetFrameAndAffineMat).size(),
-                                                    Globals::faceMaskBlur, Globals::faceMaskPadding);
+    std::vector<cv::Mat> cropMasks;
+    if (m_config->m_faceMaskTypeSet.contains(Typing::EnumFaceMaskerType::FM_Box)) {
+        auto boxMask = FaceMasker::createStaticBoxMask(std::get<0>(*croppedTargetFrameAndAffineMat).size(),
+                                                       m_config->m_faceMaskBlur, m_config->m_faceMaskPadding);
+        cropMasks.push_back(std::move(*boxMask));
+    } else if (m_config->m_faceMaskTypeSet.contains(Typing::EnumFaceMaskerType::FM_Occlusion)) {
+        auto occlusionMask = m_faceMasker->createOcclusionMask(std::get<0>(*croppedTargetFrameAndAffineMat));
+        cropMasks.push_back(std::move(*occlusionMask));
+    }
 
     // Create input tensors
     std::vector<Ort::Value> inputTensors;
@@ -141,7 +177,10 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
     for (const auto &inputName : m_inputNames) {
         if (std::string(inputName) == "source") {
             if (modelType == "blendswap" || modelType == "uniface") {
-                // Todo 完善blendSWap和uniface
+                auto preparedSourceFrame = this->prepareSourceFrame(sourceFace);
+                static auto inputImageData = this->prepareCropFrameData(*preparedSourceFrame);
+                std::vector<int64_t> inputImageShape = {1, 3, preparedSourceFrame->rows, preparedSourceFrame->cols};
+                inputTensors.emplace_back(Ort::Value::CreateTensor<float>(m_memoryInfo, inputImageData->data(), inputImageData->size(), inputImageShape.data(), inputImageShape.size()));
             } else {
                 static auto inputEmbeddingData = this->prepareSourceEmbedding(sourceFace);
                 std::vector<int64_t> inputEmbeddingShape = {1, (int64_t)inputEmbeddingData->size()};
@@ -176,23 +215,24 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
     // Merge the channels into a single matrix
     cv::Mat resultMat;
     cv::merge(channelMats, resultMat);
-
-    for (auto &cropMask : *cropMasks) {
+    
+    if (m_config->m_faceMaskTypeSet.contains(Typing::EnumFaceMaskerType::FM_Region)) {
+        auto regionMask = m_faceMasker->createRegionMask(resultMat, m_config->m_faceMaskRegionsSet);
+        cropMasks.push_back(std::move(*regionMask));
+    }
+    for (auto &cropMask : cropMasks) {
         cropMask.setTo(0, cropMask < 0);
         cropMask.setTo(1, cropMask > 1);
     }
 
-    auto cropMask = FaceMasker::getBestMask(*cropMasks);
+    auto bestCropMask = FaceMasker::getBestMask(cropMasks);
 
-    auto dstImage = FaceHelper::pasteBack(targetFrame, resultMat, *cropMask,
+    auto dstImage = FaceHelper::pasteBack(targetFrame, resultMat, *bestCropMask,
                                           std::get<1>(*croppedTargetFrameAndAffineMat));
 
     return dstImage;
 }
 
-void FaceSwapper::setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnalyser) {
-    m_faceAnalyser = faceAnalyser;
-}
 
 std::shared_ptr<Typing::VisionFrame> FaceSwapper::prepareCropVisionFrame(const VisionFrame &visionFrame, const std::vector<float> &mean, const std::vector<float> &standDeviation) {
     cv::Mat bgrImage = visionFrame.clone();
@@ -209,33 +249,22 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::prepareCropVisionFrame(const V
     return std::make_shared<Typing::VisionFrame>(processedBGR);
 }
 
-std::shared_ptr<std::vector<cv::Mat>> FaceSwapper::getCropMasks(const VisionFrame &visionFrame, const cv::Size &cropSize, const float &faceMaskBlur, const Padding &faceMaskPadding) {
-    auto cropMaskList = std::make_shared<std::vector<cv::Mat>>();
-    if (Globals::faceMaskerTypeSet.contains(Typing::EnumFaceMaskerType::FM_Box)) {
-        auto boxMask = FaceMasker::createStaticBoxMask(cropSize,
-                                                       Globals::faceMaskBlur, Globals::faceMaskPadding);
-        cropMaskList->push_back(*boxMask);
-    } else if (Globals::faceMaskerTypeSet.contains(Typing::EnumFaceMaskerType::FM_Occlusion)) {
-        auto occlusionMask = m_faceMasker->createOcclusionMask(visionFrame);
-        cropMaskList->push_back(*occlusionMask);
-    } else if (Globals::faceMaskerTypeSet.contains(Typing::EnumFaceMaskerType::FM_Region)) {
-        auto regionMask = m_faceMasker->createRegionMask(visionFrame);
-        cropMaskList->push_back(*regionMask);
-    }
-    return cropMaskList;
-}
-
 std::shared_ptr<std::vector<float>> FaceSwapper::prepareSourceEmbedding(const Face &sourceFace) {
-    double norm = cv::norm(sourceFace.embedding, cv::NORM_L2);
-    int lenFeature = sourceFace.embedding.size();
-    std::vector<float> result(lenFeature);
-    for (int i = 0; i < lenFeature; ++i) {
-        double sum = 0.0f;
-        for (int j = 0; j < lenFeature; ++j) {
-            sum += sourceFace.embedding.at(j)
-                   * m_initializerArray.at(j * lenFeature + i);
+    std::vector<float> result;
+    if (m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("type") == "inswapper") {
+        double norm = cv::norm(sourceFace.embedding, cv::NORM_L2);
+        int lenFeature = sourceFace.embedding.size();
+        result.resize(lenFeature);
+        for (int i = 0; i < lenFeature; ++i) {
+            double sum = 0.0f;
+            for (int j = 0; j < lenFeature; ++j) {
+                sum += sourceFace.embedding.at(j)
+                       * m_initializerArray.at(j * lenFeature + i);
+            }
+            result.at(i) = (float)(sum / norm);
         }
-        result.at(i) = (float)(sum / norm);
+    } else {
+        result = sourceFace.normedEmbedding;
     }
     return std::make_shared<std::vector<float>>(std::move(result));
 }
@@ -244,7 +273,7 @@ std::shared_ptr<std::vector<float>> FaceSwapper::prepareCropFrameData(const Visi
     cv::Mat bgrImage = cropFrame.clone();
     std::vector<cv::Mat> bgrChannels(3);
     split(bgrImage, bgrChannels);
-    const int imageArea = this->m_inputHeight * this->m_inputWidth;
+    const int imageArea = bgrImage.rows * bgrImage.cols;
     std::vector<float> inputImageData(3 * imageArea);
     size_t singleChnSize = imageArea * sizeof(float);
     memcpy(inputImageData.data(), (float *)bgrChannels[2].data, singleChnSize);                 // R
@@ -253,4 +282,32 @@ std::shared_ptr<std::vector<float>> FaceSwapper::prepareCropFrameData(const Visi
     return std::make_shared<std::vector<float>>(std::move(inputImageData));
 }
 
+std::shared_ptr<Typing::VisionFrame> FaceSwapper::prepareSourceFrame(const Face &sourceFace) const {
+    std::string modelType = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("type").get<std::string>();
+    Typing::VisionFrame sourceVisionFrame = Vision::readStaticImage(*m_config->m_sourcePaths.begin());
+    Typing::VisionFrame croppedVisionFrame;
+    if (modelType == "blendswap") {
+        auto cropFrameAndAffineMat = FaceHelper::warpFaceByFaceLandmarks5(sourceVisionFrame,
+                                                                          sourceFace.faceLandMark5_68,
+                                                                          m_warpTemplate,
+                                                                          cv::Size(112, 112));
+        croppedVisionFrame = std::get<0>(*cropFrameAndAffineMat);
+    }
+    if (modelType == "uniface") {
+        auto cropFrameAndAffineMat = FaceHelper::warpFaceByFaceLandmarks5(sourceVisionFrame, sourceFace.faceLandMark5_68,
+                                                                          m_warpTemplate,
+                                                                          m_size);
+        croppedVisionFrame = std::get<0>(*cropFrameAndAffineMat);
+    }
+
+    std::vector<cv::Mat> bgrChannels(3);
+    split(croppedVisionFrame, bgrChannels);
+    for (int c = 0; c < 3; c++) {
+        bgrChannels[c].convertTo(bgrChannels.at(c), CV_32FC1, 1 / 255.0);
+    }
+
+    cv::Mat processedBGR;
+    cv::merge(bgrChannels, processedBGR);
+    return std::make_shared<Typing::VisionFrame>(std::move(processedBGR));
+}
 } // namespace Ffc

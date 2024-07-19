@@ -14,6 +14,9 @@
 #include <filesystem>
 #include <string>
 #include <opencv2/opencv.hpp>
+#include <unordered_set>
+#include <vector>
+
 
 namespace Ffc {
 
@@ -27,6 +30,8 @@ public:
     static bool isImage(const std::string &path);
     static std::string getFileNameFromURL(const std::string &url);
     static uintmax_t getFileSize(const std::string &path);
+    static std::unordered_set<std::string> listFilesInDirectory(const std::string &path);
+    static std::vector<std::string> filterImagePaths(const std::vector<std::string> &paths);
 };
 
 } // namespace Ffc

@@ -24,7 +24,7 @@ namespace Ffc {
 class FaceLandmarker68 : public OrtSession {
 public:
     explicit FaceLandmarker68(const std::shared_ptr<Ort::Env> &env,
-                              const std::shared_ptr<nlohmann::json> &modelsInfoJson);
+                              const std::shared_ptr<const nlohmann::json> &modelsInfoJson);
     ~FaceLandmarker68() override = default;
 
     std::shared_ptr<std::tuple<Typing::FaceLandmark, Typing::Score>>
@@ -36,7 +36,7 @@ private:
     int m_inputWidth{};
     cv::Mat m_invAffineMatrix;
     void preProcess(const Typing::VisionFrame &visionFrame, const BoundingBox &boundingBox);
-    const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
+    const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
 };
 
 } // namespace Ffc

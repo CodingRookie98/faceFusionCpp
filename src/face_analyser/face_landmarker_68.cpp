@@ -11,7 +11,8 @@
 #include "face_landmarker_68.h"
 
 namespace Ffc {
-FaceLandmarker68::FaceLandmarker68(const std::shared_ptr<Ort::Env> &env, const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
+FaceLandmarker68::FaceLandmarker68(const std::shared_ptr<Ort::Env> &env,
+                                   const std::shared_ptr<const nlohmann::json> &modelsInfoJson) :
     OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
     std::string modelPath = "./models/2dfan4.onnx";
     // 如果 modelPath不存在则下载

@@ -14,7 +14,10 @@ namespace Ffc {
 std::vector<cv::Mat> Vision::readStaticImages(const std::vector<std::string> &imagePaths) {
     std::vector<cv::Mat> images;
     for (const auto &imagePath : imagePaths) {
-        images.emplace_back(readStaticImage(imagePath));
+        cv::Mat image = readStaticImage(imagePath);
+        if (!image.empty()) {
+            images.emplace_back(image);
+        }
     }
 
     return images;
@@ -22,7 +25,17 @@ std::vector<cv::Mat> Vision::readStaticImages(const std::vector<std::string> &im
 
 cv::Mat Vision::readStaticImage(const std::string &imagePath) {
     //    BGR
-    return cv::imread(imagePath, cv::IMREAD_COLOR);
+    if (FileSystem::fileExists(imagePath) && FileSystem::isFile(imagePath) && FileSystem::isImage(imagePath)) {
+        return cv::imread(imagePath, cv::IMREAD_COLOR);
+    } else if (!FileSystem::fileExists(imagePath)) {
+        throw std::invalid_argument("File does not exist: " + imagePath);
+    } else if (!FileSystem::isFile(imagePath)) {
+        throw std::invalid_argument("Path is not a file: " + imagePath);
+    } else if (!FileSystem::isImage(imagePath)) {
+        throw std::invalid_argument("Path is not an image file: " + imagePath);
+    } else {
+        throw std::invalid_argument("Unknown error occurred while reading image: " + imagePath);
+    }
 }
 
 Typing::VisionFrame Vision::resizeFrameResolution(const Typing::VisionFrame &visionFrame, const cv::Size &cropSize) {
@@ -43,5 +56,19 @@ bool Vision::writeImage(const cv::Mat &image, const std::string &imagePath) {
         return true;
     }
     return false;
+}
+cv::Size Vision::unpackResolution(const std::string &resolution) {
+    int width = 0;
+    int height = 0;
+    char delimiter = 'x';
+
+    std::stringstream ss(resolution);
+    ss >> width >> delimiter >> height;
+
+    if (ss.fail()) {
+        throw std::invalid_argument("Invalid dimensions format");
+    }
+
+    return cv::Size(width, height);
 }
 } // namespace Ffc

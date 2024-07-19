@@ -20,14 +20,21 @@
 
 namespace Ffc {
 
-class FaceRecognizerArcW600kR50 : public OrtSession {
+class FaceRecognizerArc : public OrtSession {
 public:
-    explicit FaceRecognizerArcW600kR50(const std::shared_ptr<Ort::Env> &env,
-                                       const std::shared_ptr<nlohmann::json> &modelsInfoJson);
-    ~FaceRecognizerArcW600kR50() override = default;
+    enum ArcType {
+        W600k_R50,
+        Simswap,
+    };
+    
+    explicit FaceRecognizerArc(const std::shared_ptr<Ort::Env> &env,
+                               const std::shared_ptr<const nlohmann::json> &modelsInfoJson,
+                               const ArcType &arcType);
+    ~FaceRecognizerArc() override = default;
 
     std::shared_ptr<std::tuple<Typing::Embedding, Typing::Embedding>>
     recognize(const Typing::VisionFrame &visionFrame, const Typing::FaceLandmark &faceLandmark5);
+    ArcType getArcType() const;
 
 private:
     void preProcess(const Typing::VisionFrame &visionFrame,
@@ -35,7 +42,8 @@ private:
     std::vector<float> m_inputData;
     int m_inputWidth{};
     int m_inputHeight{};
-    const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
+    const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
+    ArcType m_arcType;
 };
 
 } // namespace Ffc

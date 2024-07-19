@@ -4,7 +4,7 @@
  * @author         : CodingRookie
  * @brief          : None
  * @attention      : None
- * @date           : 24-7-4
+ * @date           : 24_7_4
  ******************************************************************************
  */
 
@@ -80,15 +80,15 @@ static const std::unordered_set<EnumFaceMaskRegion> faceMaskRegionAllSet = {
 static const std::unordered_map<std::string, const EnumFaceMaskRegion> faceMaskRegionMap = {
     {"All", EnumFaceMaskRegion::All},
     {"skin", EnumFaceMaskRegion::Skin},
-    {"left-eyebrow", EnumFaceMaskRegion::LeftEyebrow},
-    {"right-eyebrow", EnumFaceMaskRegion::RightEyebrow},
-    {"left-eye", EnumFaceMaskRegion::LeftEye},
-    {"right-eye", EnumFaceMaskRegion::RightEye},
+    {"left_eyebrow", EnumFaceMaskRegion::LeftEyebrow},
+    {"right_eyebrow", EnumFaceMaskRegion::RightEyebrow},
+    {"left_eye", EnumFaceMaskRegion::LeftEye},
+    {"right_eye", EnumFaceMaskRegion::RightEye},
     {"glasses", EnumFaceMaskRegion::Glasses},
     {"nose", EnumFaceMaskRegion::Nose},
     {"mouth", EnumFaceMaskRegion::Mouth},
-    {"upper-lip", EnumFaceMaskRegion::UpperLip},
-    {"lower-lip", EnumFaceMaskRegion::LowerLip}};
+    {"upper_lip", EnumFaceMaskRegion::UpperLip},
+    {"lower_lip", EnumFaceMaskRegion::LowerLip}};
 enum EnumFaceDetectModel {
     FD_Many,
     FD_Retina,
@@ -111,12 +111,46 @@ enum EnumFrameProcessor {
     FaceEnhancer,
 };
 enum EnumFaceSwapperModel {
-    InSwapper_128,
-    InSwapper_128_fp16,
+    FSM_Inswapper_128,
+    FSM_Inswapper_128_fp16,
+    FSM_Blendswap_256,
+    FSM_Simswap_256,
+    FSM_Simswap_512_unofficial,
+    FSM_Uniface_256
 };
 enum EnumFaceEnhancerModel {
-    FE_Gfpgan_14,
-    FE_CodeFormer,
+    FEM_CodeFormer,
+    FEM_Gfpgan_12,
+    FEM_Gfpgan_13,
+    FEM_Gfpgan_14,
+    FEM_Gpen_bfr_256,
+    FEM_Gpen_bfr_512,
+    FEM_Gpen_bfr_1024,
+    FEM_Gpen_bfr_2048,
+    FEM_Restoreformer_plus_plus
+};
+
+enum EnumFaceSelectorOrder {
+    FSO_Left_Right,
+    FSO_Right_Left,
+    FSO_Top_Bottom,
+    FSO_Bottom_Top,
+    FSO_Small_Large,
+    FSO_Large_Small,
+    FSO_Best_Worst,
+    FSO_Worst_Best
+};
+enum EnumFaceSelectorAge {
+    FSA_All,
+    FSA_Child,
+    FSA_Teenager,
+    FSA_Adult,
+    FSA_Senior
+};
+enum EnumFaceSelectorGender {
+    FSG_All,
+    FSG_Male,
+    FSG_Female
 };
 }
 } // namespace Ffc::Typing

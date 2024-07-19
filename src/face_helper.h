@@ -34,20 +34,34 @@ public:
                                                  const std::vector<cv::Point2f> &warpTemplate,
                                                  const cv::Size &cropSize);
 
-    static std::shared_ptr<std::tuple<cv::Mat, cv::Mat>> warpFaceByTranslation(const cv::Mat &tempVisionFrame,
-                                                                               const std::vector<float> &translation,
-                                                                               const float &scale,
-                                                                               const cv::Size &cropSize);
-    static std::shared_ptr<Typing::FaceLandmark> convertFaceLandmark68To5(const Typing::FaceLandmark &faceLandmark68);
+    static std::shared_ptr<std::tuple<cv::Mat, cv::Mat>>
+    warpFaceByTranslation(const cv::Mat &tempVisionFrame,
+                          const std::vector<float> &translation,
+                          const float &scale,
+                          const cv::Size &cropSize);
 
-    static std::shared_ptr<Typing::VisionFrame> pasteBack(const cv::Mat &tempVisionFrame, const cv::Mat &cropVisionFrame, const cv::Mat &cropMask, const cv::Mat &affineMatrix);
+    static std::shared_ptr<Typing::FaceLandmark>
+    convertFaceLandmark68To5(const Typing::FaceLandmark &faceLandmark68);
+
+    static std::shared_ptr<Typing::VisionFrame>
+    pasteBack(const cv::Mat &tempVisionFrame, const cv::Mat &cropVisionFrame,
+              const cv::Mat &cropMask, const cv::Mat &affineMatrix);
+
     static std::vector<std::array<int, 2>>
     createStaticAnchors(const int &featureStride, const int &anchorTotal,
                         const int &strideHeight, const int &strideWidth);
+
     static std::shared_ptr<Typing::BoundingBox>
     distance2BoundingBox(const std::array<int, 2> &anchor, const Typing::BoundingBox &boundingBox);
+
     static std::shared_ptr<Typing::FaceLandmark>
     distance2FaceLandmark5(const std::array<int, 2> &anchor, const Typing::FaceLandmark &faceLandmark5);
+
+    static Typing::EnumFaceSelectorAge
+    categorizeAge(const int &age);
+
+    static Typing::EnumFaceSelectorGender
+    categorizeGender(const int &gender);
 
 private:
     static float getIoU(const BoundingBox &box1, const BoundingBox &box2);

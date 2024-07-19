@@ -37,8 +37,9 @@ FaceMasker::createStaticBoxMask(const cv::Size &cropSize, const float &faceMaskB
 }
 
 FaceMasker::FaceMasker(const std::shared_ptr<Ort::Env> &env,
-                       const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
-    m_modelsInfoJson(modelsInfoJson) {
+                       const std::shared_ptr<nlohmann::json> &modelsInfoJson,
+                       const std::shared_ptr<const Config> &config) :
+    m_modelsInfoJson(modelsInfoJson), m_config(config) {
     m_env = env;
     m_maskerMap = std::make_shared<std::unordered_map<Method, std::shared_ptr<OrtSession>>>();
 }
@@ -228,6 +229,8 @@ std::shared_ptr<cv::Mat> FaceMasker::getBestMask(const std::vector<cv::Mat> &mas
         }
         cv::min(minMask, masks[i], minMask);
     }
+    minMask.setTo(0, minMask < 0);
+    minMask.setTo(1, minMask > 1);
 
     return std::make_shared<cv::Mat>(std::move(minMask));
 }

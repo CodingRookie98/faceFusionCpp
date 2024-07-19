@@ -16,23 +16,24 @@
 #include "typing.h"
 #include "ort_session.h"
 #include "face_helper.h"
-#include "globals.h"
 #include "vision.h"
 #include "file_system.h"
 #include "downloader.h"
+#include "config.h"
 
 namespace Ffc {
 
 class FaceDetectorYolo : public OrtSession {
 public:
     explicit FaceDetectorYolo(const std::shared_ptr<Ort::Env> &env,
-                              const std::shared_ptr<nlohmann::json> &modelsInfoJson);
+                              const std::shared_ptr<const nlohmann::json> &modelsInfoJson);
     ~FaceDetectorYolo() override = default;
 
     std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                                std::vector<Typing::FaceLandmark>,
                                std::vector<Typing::Score>>>
-    detect(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize);
+    detect(const Typing::VisionFrame &visionFrame,const cv::Size &faceDetectorSize,
+           const float &scoreThreshold = 0.5);
 
 private:
     void preProcess(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize);
@@ -41,7 +42,7 @@ private:
     int m_inputWidth{};
     float m_ratioHeight;
     float m_ratioWidth;
-    const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
+    const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
 };
 
 } // namespace Ffc

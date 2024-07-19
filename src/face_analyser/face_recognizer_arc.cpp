@@ -11,9 +11,20 @@
 #include "face_recognizer_arc.h"
 
 namespace Ffc {
-FaceRecognizerArcW600kR50::FaceRecognizerArcW600kR50(const std::shared_ptr<Ort::Env> &env, const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
+FaceRecognizerArc::FaceRecognizerArc(const std::shared_ptr<Ort::Env> &env,
+                                     const std::shared_ptr<const nlohmann::json> &modelsInfoJson,
+                                     const ArcType &arcType) :
     OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
-    std::string modelPath = "./models/arcface_w600k_r50.onnx";
+    m_arcType = arcType;
+    std::string modelPath;
+    switch (m_arcType) {
+    case W600k_R50:
+        modelPath = m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_blendswap").at("path");
+        break;
+    case Simswap:
+        modelPath = m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_simswap").at("path");
+        break;
+    }
     // 如果 modelPath不存在则下载
     if (!FileSystem::fileExists(modelPath)) {
         bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_uniface").at("url"),
@@ -25,19 +36,23 @@ FaceRecognizerArcW600kR50::FaceRecognizerArcW600kR50(const std::shared_ptr<Ort::
     this->createSession(modelPath);
 }
 
+FaceRecognizerArc::ArcType FaceRecognizerArc::getArcType() const {
+    return m_arcType;
+}
+
 std::shared_ptr<std::tuple<Typing::Embedding, Typing::Embedding>>
-FaceRecognizerArcW600kR50::recognize(const Typing::VisionFrame &visionFrame,
-                                     const Typing::FaceLandmark &faceLandmark5) {
+FaceRecognizerArc::recognize(const Typing::VisionFrame &visionFrame,
+                             const Typing::FaceLandmark &faceLandmark5) {
     this->preProcess(visionFrame, faceLandmark5);
     std::vector<int64_t> inputImgShape = {1, 3, this->m_inputHeight, this->m_inputWidth};
-    Ort::Value inputTensor             = Ort::Value::CreateTensor<float>(this->m_memoryInfo, this->m_inputData.data(),
+    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(this->m_memoryInfo, this->m_inputData.data(),
                                                              this->m_inputData.size(),
                                                              inputImgShape.data(), inputImgShape.size());
 
     Ort::RunOptions runOptions;
     std::vector<Ort::Value> ortOutputs = this->m_session->Run(runOptions, this->m_inputNames.data(), &inputTensor, 1, this->m_outputNames.data(), m_outputNames.size());
 
-    float *pdata         = ortOutputs[0].GetTensorMutableData<float>(); /// 形状是(1, 512)
+    float *pdata = ortOutputs[0].GetTensorMutableData<float>(); /// 形状是(1, 512)
     const int lenFeature = ortOutputs[0].GetTensorTypeAndShapeInfo().GetShape()[1];
 
     Typing::Embedding embedding(lenFeature), normedEmbedding(lenFeature);
@@ -53,9 +68,9 @@ FaceRecognizerArcW600kR50::recognize(const Typing::VisionFrame &visionFrame,
                                                                               std::move(normedEmbedding));
 }
 
-void FaceRecognizerArcW600kR50::preProcess(const Typing::VisionFrame &visionFrame,
-                                           const Typing::FaceLandmark &faceLandmark5_68) {
-    m_inputWidth  = (int)m_inputNodeDims[0][2];
+void FaceRecognizerArc::preProcess(const Typing::VisionFrame &visionFrame,
+                                   const Typing::FaceLandmark &faceLandmark5_68) {
+    m_inputWidth = (int)m_inputNodeDims[0][2];
     m_inputHeight = (int)m_inputNodeDims[0][3];
 
     std::vector<float> fVec = m_modelsInfoJson->at("faceHelper").at("warpTemplate").at("arcface_112_v2").get<std::vector<float>>();

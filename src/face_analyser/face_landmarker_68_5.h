@@ -23,7 +23,7 @@ namespace Ffc {
 class FaceLandmarker68_5 : public OrtSession {
 public:
     explicit FaceLandmarker68_5(const std::shared_ptr<Ort::Env> &env,
-                                const std::shared_ptr<nlohmann::json> &modelsInfoJson);
+                                const std::shared_ptr<const nlohmann::json> &modelsInfoJson);
     ~FaceLandmarker68_5() override = default;
 
     std::shared_ptr<Typing::FaceLandmark> detect(const Typing::FaceLandmark &faceLandmark5);
@@ -34,7 +34,7 @@ private:
     int m_inputHeight{};
     int m_inputWidth{};
     cv::Mat m_affineMatrix;
-    std::shared_ptr<nlohmann::json> m_modelsInfoJson;
+    std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
 };
 
 } // namespace Ffc

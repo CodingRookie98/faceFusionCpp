@@ -4,21 +4,23 @@
 #include "processors/frame/modules/face_enhancer.h"
 #include "face_analyser/face_analyser.h"
 #include "face_masker.h"
-#include "globals.h"
+#include "config.h"
 
 int main() {
     std::shared_ptr<Ort::Env> env = std::make_shared<Ort::Env>(Ort::Env(ORT_LOGGING_LEVEL_ERROR, "faceFusionCpp"));
-    std::string sourcePath1 = "../../test/YCY_1.jpg";
-    std::string sourcePath2 = "../../test/YCY_2.jpg";
-    std::string sourcePath3 = "../../test/YCY_3.jpg";
-    std::string targetPath = "../../test/target.jpg";
-    std::string target2FacesPath = "../../test/target_2faces.jpg";
-    std::string swapOutputPath = "../../test/resultSwap.jpg";
+    std::string sourcePath1 = "../../test/sources/YCY_1.jpg";
+    std::string sourcePath2 = "../../test/sources/YCY_2.jpg";
+    std::string sourcePath3 = "../../test/sources/YCY_3.jpg";
+    std::string targetPath = "../../test/targets/target.jpg";
+    std::string target2FacesPath = "../../test/targets/target_2faces.jpg";
+    std::string swapOutputPath = "../../test/resultSwap_uniface_256_1.jpg";
     std::string enhanceOutputPath = "../../test/resultEnhance.jpg";
 
-    Ffc::Globals::sourcePaths.push_back(sourcePath1);
-    Ffc::Globals::sourcePaths.push_back(sourcePath2);
-    Ffc::Globals::sourcePaths.push_back(sourcePath3);
+    const std::shared_ptr<Ffc::Config> config = std::make_shared<Ffc::Config>("./facefusion.ini");
+
+//    config->m_sourcePaths.push_back(sourcePath1);
+//    config->m_sourcePaths.push_back(sourcePath2);
+//    config->m_sourcePaths.push_back(sourcePath3);
 
     auto modelsInfoJson = std::make_shared<nlohmann::json>();
     std::ifstream file("./modelsInfo.json");
@@ -26,18 +28,18 @@ int main() {
         file >> *modelsInfoJson;
         file.close();
     }
-    auto faceAnalyser = std::make_shared<Ffc::FaceAnalyser>(env, modelsInfoJson);
-    auto faceMasker = std::make_shared<Ffc::FaceMasker>(env, modelsInfoJson);
-    
-//    Ffc::Globals::faceDetectorModelSet.clear();
-//    Ffc::Globals::faceDetectorModelSet.insert(Ffc::Typing::EnumFaceDetectModel::FD_Yoloface);
-//    Ffc::Globals::faceDetectorModelSet.insert(Ffc::Typing::EnumFaceDetectModel::FD_Scrfd);
+    auto faceAnalyser = std::make_shared<Ffc::FaceAnalyser>(env, modelsInfoJson, config);
+    auto faceMasker = std::make_shared<Ffc::FaceMasker>(env, modelsInfoJson, config);
 
-//    Ffc::FaceSwapper faceSwapper(env, faceAnalyser, faceMasker, modelsInfoJson);
-//    faceSwapper.processImage(Ffc::Globals::sourcePaths, targetPath, swapOutputPath);
+    //    config->m_faceDetectorModelSet.clear();
+    //    config->m_faceDetectorModelSet.insert(Ffc::Typing::EnumFaceDetectModel::FD_Yoloface);
+    //    config->m_faceDetectorModelSet.insert(Ffc::Typing::EnumFaceDetectModel::FD_Scrfd);
 
-    Ffc::FaceEnhancer faceEnhancer(env, faceAnalyser, faceMasker, modelsInfoJson);
-    faceEnhancer.processImage(swapOutputPath, enhanceOutputPath);
+    Ffc::FaceSwapper faceSwapper(env, faceAnalyser, faceMasker, modelsInfoJson, config);
+    faceSwapper.processImage(config->m_sourcePaths, targetPath, swapOutputPath);
+
+//    Ffc::FaceEnhancer faceEnhancer(env, faceAnalyser, faceMasker, modelsInfoJson, config);
+//    faceEnhancer.processImage(swapOutputPath, enhanceOutputPath);
 
     return 0;
 }

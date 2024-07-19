@@ -17,7 +17,6 @@
 #include "filesystem"
 #include "downloader.h"
 #include "vision.h"
-#include "globals.h"
 #include "face_helper.h"
 
 namespace Ffc {
@@ -25,17 +24,18 @@ namespace Ffc {
 class FaceDetectorRetina : public OrtSession {
 public:
     FaceDetectorRetina(const std::shared_ptr<Ort::Env> &env,
-                      const std::shared_ptr<nlohmann::json> &modelsInfoJson);
+                       const std::shared_ptr<const nlohmann::json> &modelsInfoJson);
     ~FaceDetectorRetina() override = default;
 
     std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                                std::vector<Typing::FaceLandmark>,
                                std::vector<Typing::Score>>>
-    detect(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize);
+    detect(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize,
+           const float &scoreThreshold = 0.5);
 
 private:
     void preProcess(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize);
-    const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
+    const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
     std::vector<float> m_inputData;
     int m_inputHeight{};
     int m_inputWidth{};

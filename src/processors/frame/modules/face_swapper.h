@@ -15,13 +15,14 @@
 #include <onnx/onnx_pb.h>
 #include <fstream>
 #include <opencv2/opencv.hpp>
+#include <unordered_set>
 #include "nlohmann/json.hpp"
 #include "vision.h"
 #include "typing.h"
 #include "face_analyser/face_analyser.h"
-#include "globals.h"
 #include "face_masker.h"
 #include "ort_session.h"
+#include "config.h"
 
 namespace Ffc {
 
@@ -30,13 +31,13 @@ public:
     explicit FaceSwapper(const std::shared_ptr<Ort::Env> &env,
                          const std::shared_ptr<FaceAnalyser> &faceAnalyser,
                          const std::shared_ptr<FaceMasker> &faceMasker,
-                         const std::shared_ptr<nlohmann::json> &modelsInfoJson);
+                         const std::shared_ptr<nlohmann::json> &modelsInfoJson,
+                         const std::shared_ptr<const Config> &config);
     ~FaceSwapper() = default;
 
-    void processImage(const std::vector<std::string> &sourcePaths,
+    void processImage(const std::unordered_set<std::string> &sourcePaths,
                       const std::string &targetPath,
                       const std::string &outputPath);
-    void setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnalyser);
 
 private:
     std::shared_ptr<Typing::VisionFrame> processFrame(const Typing::Faces &referenceFaces,
@@ -54,15 +55,14 @@ private:
     prepareCropVisionFrame(const Typing::VisionFrame &visionFrame,
                            const std::vector<float> &mean,
                            const std::vector<float> &standDeviation);
-    std::shared_ptr<std::vector<cv::Mat>>
-    getCropMasks(const Typing::VisionFrame &visionFrame, const cv::Size &cropSize,
-                 const float &faceMaskBlur, const Typing::Padding &faceMaskPadding);
     std::shared_ptr<std::vector<float>> prepareSourceEmbedding(const Typing::Face &sourceFace);
     std::shared_ptr<std::vector<float>> prepareCropFrameData(const Typing::VisionFrame &cropFrame) const;
+    std::shared_ptr<Typing::VisionFrame> prepareSourceFrame(const Typing::Face &sourceFace) const;
 
     std::shared_ptr<FaceAnalyser> m_faceAnalyser = nullptr;
     std::shared_ptr<FaceMasker> m_faceMasker = nullptr;
     const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
+    const std::shared_ptr<const Config> m_config;
     std::shared_ptr<Typing::EnumFaceSwapperModel> m_faceSwapperModel = nullptr;
     int m_inputHeight;
     int m_inputWidth;

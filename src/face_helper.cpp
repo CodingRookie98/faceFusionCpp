@@ -195,4 +195,24 @@ FaceHelper::distance2FaceLandmark5(const std::array<int, 2> &anchor, const FaceL
     }
     return std::make_shared<Typing::FaceLandmark>(faceLandmark5_);
 }
+
+Typing::EnumFaceSelectorAge FaceHelper::categorizeAge(const int &age) {
+    if (age < 13) {
+        return FSA_Child;
+    } else if (age < 19) {
+        return FSA_Teenager;
+    } else if (age < 60) {
+        return FSA_Adult;
+    } else {
+        return FSA_Senior;
+    }
+}
+
+Typing::EnumFaceSelectorGender FaceHelper::categorizeGender(const int &gender) {
+    if (gender == 0) {
+        return FSG_Female;
+    } else {
+        return FSG_Male;
+    }
+}
 } // namespace Ffc

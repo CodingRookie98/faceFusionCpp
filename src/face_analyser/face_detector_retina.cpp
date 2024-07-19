@@ -12,7 +12,7 @@
 
 namespace Ffc {
 FaceDetectorRetina::FaceDetectorRetina(const std::shared_ptr<Ort::Env> &env,
-                                       const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
+                                       const std::shared_ptr<const nlohmann::json> &modelsInfoJson) :
     OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
     std::string modelPath = m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_retinaface").at("path");
 
@@ -29,7 +29,8 @@ FaceDetectorRetina::FaceDetectorRetina(const std::shared_ptr<Ort::Env> &env,
 std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                            std::vector<Typing::FaceLandmark>,
                            std::vector<Typing::Score>>>
-FaceDetectorRetina::detect(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
+FaceDetectorRetina::detect(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize,
+                           const float &scoreThreshold) {
     preProcess(visionFrame, faceDetectorSize);
 
     std::vector<int64_t> inputImgShape = {1, 3, faceDetectorSize.height, faceDetectorSize.width};
@@ -48,7 +49,7 @@ FaceDetectorRetina::detect(const VisionFrame &visionFrame, const cv::Size &faceD
         float *pdataScore = ortOutputs[index].GetTensorMutableData<float>();
         for (size_t j = 0; j < size; ++j) {
             float tempScore = *(pdataScore + j);
-            if (tempScore >= Globals::faceDetectorScore) {
+            if (tempScore >= scoreThreshold) {
                 keepIndices.emplace_back(j);
             }
         }

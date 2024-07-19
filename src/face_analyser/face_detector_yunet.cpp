@@ -12,7 +12,7 @@
 
 namespace Ffc {
 FaceDetectorYunet::FaceDetectorYunet(const std::shared_ptr<Ort::Env> &env,
-                                     const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
+                                     const std::shared_ptr<const nlohmann::json> &modelsInfoJson) :
     OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
     std::string modelPath = m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yunet").at("path");
 
@@ -29,11 +29,12 @@ FaceDetectorYunet::FaceDetectorYunet(const std::shared_ptr<Ort::Env> &env,
 std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                            std::vector<Typing::FaceLandmark>,
                            std::vector<Typing::Score>>>
-FaceDetectorYunet::detect(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
+FaceDetectorYunet::detect(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize,
+                          const float &scoreThreshold) {
     preProcess(visionFrame, faceDetectorSize);
 
     m_faceDetectorYN->setInputSize(cv::Size(m_inputWidth, m_inputHeight));
-    m_faceDetectorYN->setScoreThreshold(Globals::faceDetectorScore);
+    m_faceDetectorYN->setScoreThreshold(scoreThreshold);
     cv::Mat output;
     m_faceDetectorYN->detect(m_inputVisionFrame, output);
 
@@ -47,7 +48,7 @@ FaceDetectorYunet::detect(const VisionFrame &visionFrame, const cv::Size &faceDe
         tempBbox.xmax = (output.at<float>(i, 0) + output.at<float>(i, 2)) * m_ratioWidth;
         tempBbox.ymax = (output.at<float>(i, 1) + output.at<float>(i, 3)) * m_ratioWidth;
         resultBoundingBoxes.emplace_back(tempBbox);
-        
+
         Typing::FaceLandmark tempLandmark;
         for (size_t j = 4; j < 14; j += 2) {
             cv::Point2f tempPoint;
@@ -56,7 +57,7 @@ FaceDetectorYunet::detect(const VisionFrame &visionFrame, const cv::Size &faceDe
             tempLandmark.emplace_back(tempPoint);
         }
         resultFaceLandmarks.emplace_back(tempLandmark);
-        
+
         resultScores.emplace_back(output.at<float>(i, 14));
     }
 

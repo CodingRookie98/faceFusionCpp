@@ -44,7 +44,8 @@ void FaceDetectorYolo::preProcess(const VisionFrame &visionFrame, const cv::Size
 std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                            std::vector<Typing::FaceLandmark>,
                            std::vector<Typing::Score>>>
-FaceDetectorYolo::detect(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
+FaceDetectorYolo::detect(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize,
+                         const float &scoreThreshold) {
     this->preProcess(visionFrame, faceDetectorSize);
 
     std::vector<int64_t> inputImgShape = {1, 3, faceDetectorSize.height, faceDetectorSize.width};
@@ -61,7 +62,7 @@ FaceDetectorYolo::detect(const VisionFrame &visionFrame, const cv::Size &faceDet
     std::vector<Ffc::Typing::FaceLandmark> landmarkRaw;
     for (int i = 0; i < numBox; i++) {
         const float score = pdata[4 * numBox + i];
-        if (score > Ffc::Globals::faceDetectorScore) {
+        if (score > scoreThreshold) {
             float xmin = (pdata[i] - 0.5 * pdata[2 * numBox + i]) * m_ratioWidth;           ///(cx,cy,w,h)转到(x,y,w,h)并还原到原图
             float ymin = (pdata[numBox + i] - 0.5 * pdata[3 * numBox + i]) * m_ratioHeight; ///(cx,cy,w,h)转到(x,y,w,h)并还原到原图
             float xmax = (pdata[i] + 0.5 * pdata[2 * numBox + i]) * m_ratioWidth;           ///(cx,cy,w,h)转到(x,y,w,h)并还原到原图
@@ -87,7 +88,7 @@ FaceDetectorYolo::detect(const VisionFrame &visionFrame, const cv::Size &faceDet
             landmarkRaw.emplace_back(faceLandmark);
         }
     }
-    
+
     m_inputData.clear();
 
     auto result = std::make_shared<std::tuple<std::vector<Typing::BoundingBox>,
@@ -97,9 +98,9 @@ FaceDetectorYolo::detect(const VisionFrame &visionFrame, const cv::Size &faceDet
 }
 
 FaceDetectorYolo::FaceDetectorYolo(const std::shared_ptr<Ort::Env> &env,
-                                   const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
+                                   const std::shared_ptr<const nlohmann::json> &modelsInfoJson) :
     OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
-    std::string modelPath = "./models/yoloface_8n.onnx";
+    std::string modelPath = m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yoloface").at("path");
 
     if (!FileSystem::fileExists(modelPath)) {
         bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yoloface").at("url"),

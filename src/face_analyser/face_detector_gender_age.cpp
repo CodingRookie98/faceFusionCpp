@@ -11,9 +11,19 @@
 #include "face_detector_gender_age.h"
 
 namespace Ffc {
-FaceDetectorGenderAge::FaceDetectorGenderAge(const std::shared_ptr<Ort::Env> &env) :
-    OrtSession(env) {
-    this->createSession("./models/gender_age.onnx");
+FaceDetectorGenderAge::FaceDetectorGenderAge(const std::shared_ptr<Ort::Env> &env,
+                                             const std::shared_ptr<const nlohmann::json> &modelsInfoJson) :
+    OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
+    std::string modelPath = m_modelsInfoJson->at("faceAnalyserModels").at("gender_age").at("path");
+
+    if (!FileSystem::fileExists(modelPath)) {
+        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceAnalyserModels").at("gender_age").at("url"),
+                                                               "./models");
+        if (!downloadSuccess) {
+            throw std::runtime_error("Failed to download the model file: " + modelPath);
+        }
+    }
+    this->createSession(modelPath);
 }
 
 std::shared_ptr<std::tuple<int, int>> FaceDetectorGenderAge::detect(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
@@ -51,8 +61,8 @@ std::shared_ptr<std::tuple<int, int>> FaceDetectorGenderAge::detect(const Vision
 
     Ort::RunOptions runOptions;
     std::vector<Ort::Value> outputTensor = m_session->Run(runOptions, m_inputNames.data(),
-                                                                   inputTensors.data(), inputTensors.size(),
-                                                                   m_outputNames.data(), m_outputNames.size());
+                                                          inputTensors.data(), inputTensors.size(),
+                                                          m_outputNames.data(), m_outputNames.size());
     const float *pdta = outputTensor[0].GetTensorMutableData<float>();
     std::shared_ptr<std::tuple<int, int>> result;
     if (*(pdta) > *(pdta + 1)) {

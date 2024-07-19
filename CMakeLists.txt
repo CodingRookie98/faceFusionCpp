@@ -14,7 +14,9 @@ add_subdirectory(src)
 find_package(OpenCV REQUIRED)
 find_package(ONNX CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
 
+target_include_directories(${ProgramName} PRIVATE ${SIMPLEINI_INCLUDE_DIRS})
 target_link_directories(${ProgramName} PRIVATE
         ${VCPKG_INSTALLED_DIR}/x64-windows/lib
 )

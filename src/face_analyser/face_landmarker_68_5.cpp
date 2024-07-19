@@ -11,7 +11,8 @@
 #include "face_landmarker_68_5.h"
 
 namespace Ffc {
-FaceLandmarker68_5::FaceLandmarker68_5(const std::shared_ptr<Ort::Env> &env, const std::shared_ptr<nlohmann::json> &modelsInfoJson) :
+FaceLandmarker68_5::FaceLandmarker68_5(const std::shared_ptr<Ort::Env> &env,
+                                       const std::shared_ptr<const nlohmann::json> &modelsInfoJson) :
     OrtSession(env), m_modelsInfoJson(modelsInfoJson) {
     std::string modelPath = "./models/face_landmarker_68_5.onnx";
     // 如果 modelPath不存在则下载

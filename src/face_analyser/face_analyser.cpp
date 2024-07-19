@@ -11,9 +11,11 @@
 #include "face_analyser.h"
 
 namespace Ffc {
-FaceAnalyser::FaceAnalyser(const std::shared_ptr<Ort::Env> &env, const std::shared_ptr<nlohmann::json> &modelsInfoJson) {
+FaceAnalyser::FaceAnalyser(const std::shared_ptr<Ort::Env> &env,
+                           const std::shared_ptr<const nlohmann::json> &modelsInfoJson,
+                           const std::shared_ptr<const Config> &config) :
+    m_config(config), m_modelsInfoJson(modelsInfoJson) {
     this->m_env = env;
-    m_modelsInfoJson = modelsInfoJson;
 }
 
 void FaceAnalyser::createAnalyser(const FaceAnalyser::Method &method) {
@@ -41,11 +43,16 @@ void FaceAnalyser::createAnalyser(const FaceAnalyser::Method &method) {
     case DetectLandmark68_5:
         analyserPtr = std::make_shared<FaceLandmarker68_5>(m_env, m_modelsInfoJson);
         break;
-    case RecognizeWithArcfaceW600kR50:
-        analyserPtr = std::make_shared<FaceRecognizerArcW600kR50>(m_env, m_modelsInfoJson);
+    case RecognizeWithArcFace:
+        if (m_config->m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Simswap_256
+            || m_config->m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Simswap_512_unofficial) {
+            analyserPtr = std::make_shared<FaceRecognizerArc>(m_env, m_modelsInfoJson, FaceRecognizerArc::ArcType::Simswap);
+        } else {
+            analyserPtr = std::make_shared<FaceRecognizerArc>(m_env, m_modelsInfoJson, FaceRecognizerArc::ArcType::W600k_R50);
+        }
         break;
     case DetectorGenderAge:
-        analyserPtr = std::make_shared<FaceDetectorGenderAge>(m_env);
+        analyserPtr = std::make_shared<FaceDetectorGenderAge>(m_env, m_modelsInfoJson);
         break;
     default: break;
     }
@@ -78,6 +85,8 @@ FaceAnalyser::getAverageFace(const std::vector<Typing::VisionFrame> &visionFrame
         averageFace.faceLandmark68_5 = firstFace.faceLandmark68_5;
         averageFace.detectorScore = firstFace.detectorScore;
         averageFace.landmarkerScore = firstFace.landmarkerScore;
+        averageFace.gender = firstFace.gender;
+        averageFace.age = firstFace.age;
 
         if (faces.size() > 1) {
             Typing::Embedding averageEmbedding(faces.front().embedding.size());
@@ -124,33 +133,33 @@ std::shared_ptr<Typing::Faces> FaceAnalyser::getManyFaces(const Typing::VisionFr
     std::vector<Typing::FaceLandmark> resultLandmarks5, landmarks5;
     std::vector<Typing::Score> resultScores, scores;
     std::shared_ptr<Typing::Faces> resultFaces = std::make_shared<Typing::Faces>();
-    if (Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yoloface)) {
-        auto result = this->detectWithYoloFace(visionFrame, Globals::faceDetectorSize);
+    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yoloface)) {
+        auto result = this->detectWithYoloFace(visionFrame, m_config->m_faceDetectorSize);
         std::tie(boundingBoxes, landmarks5, scores) = *result;
         resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
         resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
         resultScores.insert(resultScores.end(), scores.begin(), scores.end());
     }
-    if (Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Scrfd)) {
-        auto result = this->detectWithScrfd(visionFrame, Globals::faceDetectorSize);
+    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Scrfd)) {
+        auto result = this->detectWithScrfd(visionFrame, m_config->m_faceDetectorSize);
         std::tie(boundingBoxes, landmarks5, scores) = *result;
         resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
         resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
         resultScores.insert(resultScores.end(), scores.begin(), scores.end());
     }
-    if (Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Retina)) {
-        auto result = this->detectWithRetina(visionFrame, Globals::faceDetectorSize);
+    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Retina)) {
+        auto result = this->detectWithRetina(visionFrame, m_config->m_faceDetectorSize);
         std::tie(boundingBoxes, landmarks5, scores) = *result;
         resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
         resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
         resultScores.insert(resultScores.end(), scores.begin(), scores.end());
     }
-    if (Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yunet)) {
-        auto result = this->detectWithYunet(visionFrame, Globals::faceDetectorSize);
+    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yunet)) {
+        auto result = this->detectWithYunet(visionFrame, m_config->m_faceDetectorSize);
         std::tie(boundingBoxes, landmarks5, scores) = *result;
         resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
         resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
@@ -164,7 +173,9 @@ std::shared_ptr<Typing::Faces> FaceAnalyser::getManyFaces(const Typing::VisionFr
                                                    std::make_tuple(resultBoundingBoxes, resultLandmarks5, resultScores)));
     }
 
-    // Todo 对faces排序以及按照年龄和性别筛选
+    resultFaces = sortByOrder(resultFaces, m_config->m_faceSelectorOrder);
+    resultFaces = filterByAge(resultFaces, m_config->m_faceSelectorAge);
+    resultFaces = filterByGender(resultFaces, m_config->m_faceSelectorGender);
 
     return resultFaces;
 }
@@ -188,7 +199,7 @@ FaceAnalyser::detectWithYoloFace(const VisionFrame &visionFrame, const cv::Size 
     }
 
     auto detectorYolo = std::dynamic_pointer_cast<FaceDetectorYolo>(m_analyserMap.at(DetectWithYoloFace));
-    return detectorYolo->detect(visionFrame, faceDetectorSize);
+    return detectorYolo->detect(visionFrame, faceDetectorSize, m_config->m_faceDetectorScore);
 }
 
 std::shared_ptr<Typing::Faces>
@@ -198,7 +209,7 @@ FaceAnalyser::createFaces(const Typing::VisionFrame &visionFrame,
                                                            std::vector<Typing::Score>>> &input) {
     std::shared_ptr<Typing::Faces> resultFaces = std::make_shared<Typing::Faces>();
 
-    if (Ffc::Globals::faceDetectorScore <= 0) {
+    if (m_config->m_faceDetectorScore <= 0) {
         return resultFaces;
     }
 
@@ -206,7 +217,7 @@ FaceAnalyser::createFaces(const Typing::VisionFrame &visionFrame,
     auto faceLandmarks = new std::vector<Typing::FaceLandmark>(std::get<1>(*input));
     auto scores = new std::vector<Typing::Score>(std::get<2>(*input));
 
-    float iouThreshold = Globals::faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many) ? 0.1 : 0.4;
+    float iouThreshold = m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many) ? 0.1 : 0.4;
     auto keepIndices = Ffc::FaceHelper::applyNms(*boundingBoxes, *scores, iouThreshold);
 
     for (const auto &index : keepIndices) {
@@ -218,12 +229,12 @@ FaceAnalyser::createFaces(const Typing::VisionFrame &visionFrame,
         tempFace.faceLandmark68 = tempFace.faceLandmark68_5;
         tempFace.detectorScore = scores->at(index);
         tempFace.landmarkerScore = 0.0;
-        if (Ffc::Globals::faceLandmarkerScore > 0) {
+        if (m_config->m_faceLandmarkerScore > 0) {
             auto faceLandmark68AndScore = this->detectLandmark68(visionFrame, tempFace.boundingBox);
             if (faceLandmark68AndScore != nullptr) {
                 tempFace.faceLandmark68 = std::get<0>(*faceLandmark68AndScore);
                 tempFace.landmarkerScore = std::get<1>(*faceLandmark68AndScore);
-                if (std::get<1>(*faceLandmark68AndScore) > Ffc::Globals::faceLandmarkerScore) {
+                if (std::get<1>(*faceLandmark68AndScore) > m_config->m_faceLandmarkerScore) {
                     tempFace.faceLandMark5_68 = *(FaceHelper::convertFaceLandmark68To5(tempFace.faceLandmark68));
                 }
             }
@@ -259,11 +270,23 @@ FaceAnalyser::detectLandmark68(const VisionFrame &visionFrame, const BoundingBox
 }
 
 std::shared_ptr<std::tuple<Typing::Embedding, Typing::Embedding>> FaceAnalyser::calculateEmbedding(const VisionFrame &visionFrame, const FaceLandmark &faceLandmark5_68) {
-    if (!m_analyserMap.contains(RecognizeWithArcfaceW600kR50)) {
-        createAnalyser(RecognizeWithArcfaceW600kR50);
+    std::shared_ptr<FaceRecognizerArc> recognizerArc = nullptr;
+    if (!m_analyserMap.contains(RecognizeWithArcFace)) {
+        createAnalyser(RecognizeWithArcFace);
+    } else {
+        recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(m_analyserMap.at(RecognizeWithArcFace));
+        if (m_config->m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Simswap_256
+            || m_config->m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Simswap_512_unofficial) {
+            if (recognizerArc->getArcType() != FaceRecognizerArc::ArcType::Simswap) {
+                createAnalyser(RecognizeWithArcFace);
+            }
+        } else {
+            if (recognizerArc->getArcType() != FaceRecognizerArc::ArcType::W600k_R50) {
+                createAnalyser(RecognizeWithArcFace);
+            }
+        }
     }
-
-    auto recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArcW600kR50>(m_analyserMap.at(RecognizeWithArcfaceW600kR50));
+    recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(m_analyserMap.at(RecognizeWithArcFace));
     return recognizerArc->recognize(visionFrame, faceLandmark5_68);
 }
 
@@ -285,7 +308,7 @@ FaceAnalyser::detectWithScrfd(const VisionFrame &visionFrame, const cv::Size &fa
         createAnalyser(DetectWithScrfd);
     }
     auto detectorScrfd = std::dynamic_pointer_cast<FaceDetectorScrfd>(m_analyserMap.at(DetectWithScrfd));
-    return detectorScrfd->detect(visionFrame, faceDetectorSize);
+    return detectorScrfd->detect(visionFrame, faceDetectorSize, m_config->m_faceDetectorScore);
 }
 
 std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
@@ -296,7 +319,7 @@ FaceAnalyser::detectWithRetina(const VisionFrame &visionFrame, const cv::Size &f
         createAnalyser(DetectWithRetina);
     }
     auto detectorRetina = std::dynamic_pointer_cast<FaceDetectorRetina>(m_analyserMap.at(DetectWithRetina));
-    return detectorRetina->detect(visionFrame, faceDetectorSize);
+    return detectorRetina->detect(visionFrame, faceDetectorSize, m_config->m_faceDetectorScore);
 }
 
 std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
@@ -307,6 +330,92 @@ FaceAnalyser::detectWithYunet(const VisionFrame &visionFrame, const cv::Size &fa
         createAnalyser(DetectWithYunet);
     }
     auto detectorYunet = std::dynamic_pointer_cast<FaceDetectorYunet>(m_analyserMap.at(DetectWithYunet));
-    return detectorYunet->detect(visionFrame, faceDetectorSize);
+    return detectorYunet->detect(visionFrame, faceDetectorSize, m_config->m_faceDetectorScore);
+}
+
+std::shared_ptr<Typing::Faces> FaceAnalyser::sortByOrder(std::shared_ptr<Typing::Faces> faces, const EnumFaceSelectorOrder &order) {
+    switch (order) {
+    case Typing::EnumFaceSelectorOrder::FSO_Left_Right:
+        std::sort(faces->begin(), faces->end(), [](const Typing::Face &face1, const Typing::Face &face2) {
+            return face1.boundingBox.xmin < face2.boundingBox.xmin;
+        });
+        break;
+    case FSO_Right_Left:
+        std::sort(faces->begin(), faces->end(), [](const Typing::Face &face1, const Typing::Face &face2) {
+            return face1.boundingBox.xmin > face2.boundingBox.xmin;
+        });
+        break;
+    case FSO_Top_Bottom:
+        std::sort(faces->begin(), faces->end(), [](const Typing::Face &face1, const Typing::Face &face2) {
+            return face1.boundingBox.ymin < face2.boundingBox.ymin;
+        });
+        break;
+    case FSO_Bottom_Top:
+        std::sort(faces->begin(), faces->end(), [](const Typing::Face &face1, const Typing::Face &face2) {
+            return face1.boundingBox.ymin > face2.boundingBox.ymin;
+        });
+        break;
+    case FSO_Small_Large:
+        std::sort(faces->begin(), faces->end(), [](const Typing::Face &face1, const Typing::Face &face2) {
+            return (face1.boundingBox.xmax - face1.boundingBox.xmin) * (face1.boundingBox.ymax - face1.boundingBox.ymin)
+                   < (face2.boundingBox.xmax - face2.boundingBox.xmin) * (face2.boundingBox.ymax - face2.boundingBox.ymin);
+        });
+        break;
+    case FSO_Large_Small:
+        std::sort(faces->begin(), faces->end(), [](const Typing::Face &face1, const Typing::Face &face2) {
+            return (face1.boundingBox.xmax - face1.boundingBox.xmin) * (face1.boundingBox.ymax - face1.boundingBox.ymin)
+                   > (face2.boundingBox.xmax - face2.boundingBox.xmin) * (face2.boundingBox.ymax - face2.boundingBox.ymin);
+        });
+        break;
+    case FSO_Best_Worst:
+        std::sort(faces->begin(), faces->end(), [](const Typing::Face &face1, const Typing::Face &face2) {
+            return face1.detectorScore > face2.detectorScore;
+        });
+        break;
+    case FSO_Worst_Best:
+        std::sort(faces->begin(), faces->end(), [](const Typing::Face &face1, const Typing::Face &face2) {
+            return face1.detectorScore < face2.detectorScore;
+        });
+        break;
+    default: break;
+    }
+
+    return faces;
+}
+
+std::shared_ptr<Typing::Faces>
+FaceAnalyser::filterByAge(std::shared_ptr<Typing::Faces> faces, const EnumFaceSelectorAge &age) {
+    if (faces == nullptr) {
+        return nullptr;
+    } else if (age == EnumFaceSelectorAge::FSA_All) {
+        return faces;
+    }
+
+    for (auto it = faces->begin(); it != faces->end();) {
+        if (FaceHelper::categorizeAge(it->age) == age) {
+            it = faces->erase(it);
+        } else {
+            ++it;
+        }
+    }
+    return faces;
+}
+
+std::shared_ptr<Typing::Faces>
+FaceAnalyser::filterByGender(std::shared_ptr<Typing::Faces> faces, const EnumFaceSelectorGender &gender) {
+    if (faces == nullptr) {
+        return nullptr;
+    } else if (gender == EnumFaceSelectorGender::FSG_All) {
+        return faces;
+    }
+
+    for (auto it = faces->begin(); it != faces->end();) {
+        if (FaceHelper::categorizeGender(it->gender) == gender) {
+            it = faces->erase(it);
+        } else {
+            ++it;
+        }
+    }
+    return faces;
 }
 } // namespace Ffc

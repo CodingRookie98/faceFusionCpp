@@ -15,7 +15,6 @@
 #include <onnxruntime_cxx_api.h>
 #include "typing.h"
 #include "vision.h"
-#include "globals.h"
 #include "face_analyser/face_analyser.h"
 #include "face_masker.h"
 #include "ort_session.h"
@@ -26,7 +25,8 @@ public:
     FaceEnhancer(const std::shared_ptr<Ort::Env> &env,
                  const std::shared_ptr<FaceAnalyser> &faceAnalyser,
                  const std::shared_ptr<FaceMasker> &faceMasker,
-                 const std::shared_ptr<nlohmann::json> &modelsInfoJson);
+                 const std::shared_ptr<nlohmann::json> &modelsInfoJson,
+                 const std::shared_ptr<const Config> &config);
     ~FaceEnhancer() = default;
 
     void processImage(const std::string &targetPath, const std::string &outputPath);
@@ -38,8 +38,8 @@ private:
                                                       const Typing::VisionFrame &targetFrame);
     std::shared_ptr<Typing::VisionFrame> enhanceFace(const Typing::Face &targetFace,
                                                      const Typing::VisionFrame &tempVisionFrame);
-    static std::shared_ptr<Typing::VisionFrame> blendFrame(const Typing::VisionFrame &targetFrame,
-                                                           const Typing::VisionFrame &pasteVisionFrame);
+    std::shared_ptr<Typing::VisionFrame> blendFrame(const Typing::VisionFrame &targetFrame,
+                                                    const Typing::VisionFrame &pasteVisionFrame);
     std::shared_ptr<Typing::VisionFrame> applyEnhance(const Typing::Face &targetFace,
                                                       const Typing::VisionFrame &tempVisionFrame);
 
@@ -49,6 +49,7 @@ private:
     std::shared_ptr<FaceAnalyser> m_faceAnalyser;
     std::shared_ptr<FaceMasker> m_faceMasker;
     const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
+    const std::shared_ptr<const Config> m_config;
     std::string m_modelName;
     std::vector<cv::Point2f> m_warpTemplate;
     cv::Size m_size;
