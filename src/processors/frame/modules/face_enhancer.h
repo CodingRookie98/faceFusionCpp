@@ -18,9 +18,11 @@
 #include "face_analyser/face_analyser.h"
 #include "face_masker.h"
 #include "ort_session.h"
+#include "processor_base.h"
+#include "logger.h"
 
 namespace Ffc {
-class FaceEnhancer : public OrtSession {
+class FaceEnhancer : public OrtSession, public ProcessorBase {
 public:
     FaceEnhancer(const std::shared_ptr<Ort::Env> &env,
                  const std::shared_ptr<FaceAnalyser> &faceAnalyser,
@@ -28,6 +30,9 @@ public:
                  const std::shared_ptr<nlohmann::json> &modelsInfoJson,
                  const std::shared_ptr<const Config> &config);
     ~FaceEnhancer() = default;
+    bool preCheck() override;
+    bool postCheck() override;
+    bool preProcess() override;
 
     void processImage(const std::string &targetPath, const std::string &outputPath);
     void setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnalyser);
@@ -54,6 +59,7 @@ private:
     std::vector<cv::Point2f> m_warpTemplate;
     cv::Size m_size;
     std::shared_ptr<Typing::EnumFaceEnhancerModel> m_faceEnhancerModel;
+    std::shared_ptr<Logger> m_logger = Logger::getInstance();
 };
 } // namespace Ffc
 #endif // FACEFUSIONCPP_SRC_PROCESSORS_FRAME_MODULES_FACE_ENHANCER_H_

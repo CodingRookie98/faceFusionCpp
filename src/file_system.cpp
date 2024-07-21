@@ -81,4 +81,7 @@ std::vector<std::string> FileSystem::filterImagePaths(const std::vector<std::str
 
     return imagePaths;
 }
+std::string FileSystem::resolveRelativePath(const std::string &path) {
+    return std::filesystem::absolute(path).string();
+}
 } // namespace Ffc

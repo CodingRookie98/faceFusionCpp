@@ -27,7 +27,7 @@ FaceRecognizerArc::FaceRecognizerArc(const std::shared_ptr<Ort::Env> &env,
     }
     // 如果 modelPath不存在则下载
     if (!FileSystem::fileExists(modelPath)) {
-        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_uniface").at("url"),
+        bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_uniface").at("url"),
                                                                "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);

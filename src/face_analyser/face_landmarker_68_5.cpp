@@ -17,7 +17,7 @@ FaceLandmarker68_5::FaceLandmarker68_5(const std::shared_ptr<Ort::Env> &env,
     std::string modelPath = "./models/face_landmarker_68_5.onnx";
     // 如果 modelPath不存在则下载
     if (!FileSystem::fileExists(modelPath)) {
-        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68").at("url"),
+        bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68").at("url"),
                                                                "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);

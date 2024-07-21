@@ -35,6 +35,7 @@ public:
                                               const std::unordered_set<Typing::EnumFaceMaskRegion> &regions = {Typing::EnumFaceMaskRegion::All});
 
     static std::shared_ptr<cv::Mat> getBestMask(const std::vector<cv::Mat> &masks);
+    bool preCheck();
 
 private:
     enum Method {

@@ -23,17 +23,23 @@
 #include "face_masker.h"
 #include "ort_session.h"
 #include "config.h"
+#include "processor_base.h"
+#include "logger.h"
 
 namespace Ffc {
 
-class FaceSwapper : public OrtSession {
+class FaceSwapper : public OrtSession, public ProcessorBase {
 public:
     explicit FaceSwapper(const std::shared_ptr<Ort::Env> &env,
                          const std::shared_ptr<FaceAnalyser> &faceAnalyser,
                          const std::shared_ptr<FaceMasker> &faceMasker,
                          const std::shared_ptr<nlohmann::json> &modelsInfoJson,
                          const std::shared_ptr<const Config> &config);
-    ~FaceSwapper() = default;
+    ~FaceSwapper() override = default;
+
+    bool preCheck() override;
+    bool postCheck() override;
+    bool preProcess() override;
 
     void processImage(const std::unordered_set<std::string> &sourcePaths,
                       const std::string &targetPath,
@@ -72,6 +78,7 @@ private:
     std::vector<cv::Point2f> m_warpTemplate;
     std::vector<float> m_initializerArray;
     std::string m_modelName;
+    std::shared_ptr<Logger> m_logger = Logger::getInstance();
 };
 
 } // namespace Ffc

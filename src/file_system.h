@@ -32,6 +32,7 @@ public:
     static uintmax_t getFileSize(const std::string &path);
     static std::unordered_set<std::string> listFilesInDirectory(const std::string &path);
     static std::vector<std::string> filterImagePaths(const std::vector<std::string> &paths);
+    static std::string resolveRelativePath(const std::string &path);
 };
 
 } // namespace Ffc

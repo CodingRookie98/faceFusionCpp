@@ -16,12 +16,13 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 #include "typing.h"
+#include "config.h"
+#include "ort_session.h"
+#include "logger.h"
 #include "face_detector_yolo.h"
 #include "face_landmarker_68.h"
 #include "face_landmarker_68_5.h"
 #include "face_recognizer_arc.h"
-#include "config.h"
-#include "ort_session.h"
 #include "face_detector_gender_age.h"
 #include "face_detector_scrfd.h"
 #include "face_detector_retina.h"
@@ -52,12 +53,15 @@ public:
     std::shared_ptr<Typing::Faces> getManyFaces(const Typing::VisionFrame &visionFrame);
 
     std::shared_ptr<Typing::Face> getOneFace(const Typing::VisionFrame &visionFrame, const int &position = 0);
+    
+    bool preCheck();
 
 private:
     std::shared_ptr<Ort::Env> m_env;
     const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
     std::unordered_map<Method, std::shared_ptr<OrtSession>> m_analyserMap;
     const std::shared_ptr<const Config> m_config;
+    std::shared_ptr<Logger> m_logger = Logger::getInstance();
     void createAnalyser(const Method &method);
     std::shared_ptr<Typing::Faces> createFaces(const Typing::VisionFrame &visionFrame,
                                                const std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,

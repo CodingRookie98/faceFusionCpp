@@ -67,45 +67,9 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::swapFace(const Face &sourceFac
                                                            const Face &targetFace,
                                                            const VisionFrame &targetFrame) {
     if (m_faceSwapperModel == nullptr || *m_faceSwapperModel != m_config->m_faceSwapperModel) {
-        m_faceSwapperModel = std::make_shared<Typing::EnumFaceSwapperModel>(m_config->m_faceSwapperModel);
-        switch (m_config->m_faceSwapperModel) {
-        case Typing::FSM_Inswapper_128:
-            m_modelName = "inswapper_128";
-            break;
-        case Typing::FSM_Inswapper_128_fp16:
-            m_modelName = "inswapper_128_fp16";
-            break;
-        case Typing::FSM_Blendswap_256:
-            m_modelName = "blendswap_256";
-            break;
-        case Typing::FSM_Simswap_256:
-            m_modelName = "simswap_256";
-            break;
-        case Typing::FSM_Simswap_512_unofficial:
-            m_modelName = "simswap_512_unofficial";
-            break;
-        case Typing::FSM_Uniface_256:
-            m_modelName = "uniface_256";
-            break;
-        default:
-            break;
-        }
-
-        if (m_modelName.empty()) {
-            std::cerr << "Invalid face swapper model, supported models: blendswap_256 inswapper_128 inswapper_128_fp16 simswap_256 simswap_512_unofficial uniface_256" << std::endl;
-            throw std::runtime_error("Invalid face swapper model, supported models: blendswap_256 inswapper_128 inswapper_128_fp16 simswap_256 simswap_512_unofficial uniface_256");
-        }
+        postCheck();
 
         std::string modelPath = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("path");
-
-        // 检查modelPath是否存在, 不存在则下载
-        if (!FileSystem::fileExists(modelPath)) {
-            bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("url"),
-                                                                   "./models");
-            if (!downloadSuccess) {
-                throw std::runtime_error("Failed to download the model file: " + modelPath);
-            }
-        }
 
         if (m_modelName == "inswapper_128" || m_modelName == "inswapper_128_fp16") {
             // Load ONNX model as a protobuf message
@@ -215,7 +179,7 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
     // Merge the channels into a single matrix
     cv::Mat resultMat;
     cv::merge(channelMats, resultMat);
-    
+
     if (m_config->m_faceMaskTypeSet.contains(Typing::EnumFaceMaskerType::FM_Region)) {
         auto regionMask = m_faceMasker->createRegionMask(resultMat, m_config->m_faceMaskRegionsSet);
         cropMasks.push_back(std::move(*regionMask));
@@ -232,7 +196,6 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
 
     return dstImage;
 }
-
 
 std::shared_ptr<Typing::VisionFrame> FaceSwapper::prepareCropVisionFrame(const VisionFrame &visionFrame, const std::vector<float> &mean, const std::vector<float> &standDeviation) {
     cv::Mat bgrImage = visionFrame.clone();
@@ -309,5 +272,76 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::prepareSourceFrame(const Face 
     cv::Mat processedBGR;
     cv::merge(bgrChannels, processedBGR);
     return std::make_shared<Typing::VisionFrame>(std::move(processedBGR));
+}
+
+bool FaceSwapper::preCheck() {
+    m_logger->info("FaceSwapper: preCheck");
+    m_faceSwapperModel = std::make_shared<Typing::EnumFaceSwapperModel>(m_config->m_faceSwapperModel);
+    switch (m_config->m_faceSwapperModel) {
+    case Typing::FSM_Inswapper_128:
+        m_modelName = "inswapper_128";
+        break;
+    case Typing::FSM_Inswapper_128_fp16:
+        m_modelName = "inswapper_128_fp16";
+        break;
+    case Typing::FSM_Blendswap_256:
+        m_modelName = "blendswap_256";
+        break;
+    case Typing::FSM_Simswap_256:
+        m_modelName = "simswap_256";
+        break;
+    case Typing::FSM_Simswap_512_unofficial:
+        m_modelName = "simswap_512_unofficial";
+        break;
+    case Typing::FSM_Uniface_256:
+        m_modelName = "uniface_256";
+        break;
+    default:
+        break;
+    }
+
+    if (m_modelName.empty()) {
+        m_logger->error("Invalid face swapper model, supported models: blendswap_256 inswapper_128 inswapper_128_fp16 simswap_256 simswap_512_unofficial uniface_256");
+        return false;
+    }
+
+    std::string modelPath = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("path");
+    modelPath = FileSystem::resolveRelativePath(modelPath);
+
+    // 检查modelPath是否存在, 不存在则下载
+    if (!FileSystem::fileExists(modelPath)) {
+        std::string url = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("url");
+        bool downloadSuccess = Downloader::download(url, "./models");
+        if (!downloadSuccess) {
+            m_logger->error(std::format("Failed to download the model file: {}", url));
+            return false;
+        } else {
+            m_logger->info(std::format("Downloaded the model file: {}", modelPath));
+            return true;
+        }
+    }
+    return true;
+}
+
+bool FaceSwapper::postCheck() {
+    m_logger->info("[FaceSwapper] post check");
+    std::string modelUrl = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("url");
+    std::string modelPath = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("path");
+    modelPath = FileSystem::resolveRelativePath(modelPath);
+
+    if (!m_config->m_skipDownload && !Downloader::isDownloadDone(modelUrl, modelPath)) {
+        m_logger->error("[FaceSwapper] Model file is not downloaded: " + Downloader::getFileNameFromUrl(modelUrl));
+        return false;
+    }
+    if (!FileSystem::isFile(modelPath)) {
+        m_logger->error("[FaceSwapper] Model file is not present: " + modelPath);
+        return false;
+    }
+    return true;
+}
+
+bool FaceSwapper::preProcess() {
+    // Todo 完成preProcess
+    return false;
 }
 } // namespace Ffc

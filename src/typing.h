@@ -152,6 +152,12 @@ enum EnumFaceSelectorGender {
     FSG_Male,
     FSG_Female
 };
+enum EnumFaceRecognizerModel {
+    FRM_ArcFaceBlendSwap,
+    FRM_ArcFaceInswapper,
+    FRM_ArcFaceSimSwap,
+    FRM_ArcFaceUniface
+};
 }
 } // namespace Ffc::Typing
 #endif // FACEFUSIONCPP_SRC_TYPING_H_

@@ -17,7 +17,7 @@ FaceLandmarker68::FaceLandmarker68(const std::shared_ptr<Ort::Env> &env,
     std::string modelPath = "./models/2dfan4.onnx";
     // 如果 modelPath不存在则下载
     if (!FileSystem::fileExists(modelPath)) {
-        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68").at("url"),
+        bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68").at("url"),
                                                                "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);
@@ -63,8 +63,8 @@ void FaceLandmarker68::preProcess(const VisionFrame &visionFrame, const Bounding
     m_inputHeight = m_inputNodeDims[0][2];
     m_inputWidth = m_inputNodeDims[0][3];
 
-    float sub_max = std::max(boundingBox.xmax - boundingBox.xmin, boundingBox.ymax - boundingBox.ymin);
-    const float scale = 195.f / sub_max;
+    float subMax = std::max(boundingBox.xmax - boundingBox.xmin, boundingBox.ymax - boundingBox.ymin);
+    const float scale = 195.f / subMax;
     const std::vector<float> translation = {(256.f - (boundingBox.xmax + boundingBox.xmin) * scale) * 0.5f, (256.f - (boundingBox.ymax + boundingBox.ymin) * scale) * 0.5f};
 
     auto cropVisionFrameAndAffineMat = FaceHelper::warpFaceByTranslation(visionFrame, translation,

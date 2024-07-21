@@ -418,4 +418,75 @@ FaceAnalyser::filterByGender(std::shared_ptr<Typing::Faces> faces, const EnumFac
     }
     return faces;
 }
+
+bool FaceAnalyser::preCheck() {
+    std::vector<std::string> modelUrls;
+    std::vector<std::string> modelPaths;
+    std::string outputDir = FileSystem::resolveRelativePath("./models");
+
+    modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68").at("url").get<std::string>());
+    modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68_5").at("url").get<std::string>());
+    modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("gender_age").at("url").get<std::string>());
+
+    modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68").at("path").get<std::string>());
+    modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68_5").at("path").get<std::string>());
+    modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("gender_age").at("path").get<std::string>());
+
+    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yoloface)) {
+        modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yoloface").at("url").get<std::string>());
+        modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yoloface").at("path").get<std::string>());
+    }
+    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Scrfd)) {
+        modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_scrfd").at("url").get<std::string>());
+        modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_scrfd").at("path").get<std::string>());
+    }
+    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Retina)) {
+        modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_retinaface").at("url").get<std::string>());
+        modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_retinaface").at("path").get<std::string>());
+    }
+    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yunet)) {
+        modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yunet").at("url").get<std::string>());
+        modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yunet").at("path").get<std::string>());
+    }
+
+    if (m_config->m_faceRecognizerModel == Typing::EnumFaceRecognizerModel::FRM_ArcFaceBlendSwap) {
+        modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_blendswap").at("url").get<std::string>());
+        modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_blendswap").at("path").get<std::string>());
+    }
+    if (m_config->m_faceRecognizerModel == Typing::EnumFaceRecognizerModel::FRM_ArcFaceInswapper) {
+        modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_inswapper").at("url").get<std::string>());
+        modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_inswapper").at("path").get<std::string>());
+    }
+    if (m_config->m_faceRecognizerModel == Typing::EnumFaceRecognizerModel::FRM_ArcFaceSimSwap) {
+        modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_simswap").at("url").get<std::string>());
+        modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_simswap").at("path").get<std::string>());
+    }
+    if (m_config->m_faceRecognizerModel == Typing::EnumFaceRecognizerModel::FRM_ArcFaceUniface) {
+        modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_uniface").at("url").get<std::string>());
+        modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_uniface").at("path").get<std::string>());
+    }
+
+    if (modelPaths.size() != modelUrls.size()) {
+        m_logger->error("[FaceAnalyser] modelPaths.size() !=  modelUrls.size()");
+        return false;
+    }
+
+    for (size_t i = 0; i < modelPaths.size(); ++i) {
+        modelPaths.at(i) = FileSystem::resolveRelativePath(modelPaths.at(i));
+        if (!Downloader::isDownloadDone(modelUrls.at(i), modelPaths.at(i))) {
+            if (!m_config->m_skipDownload) {
+                Downloader::download(modelUrls.at(i), outputDir);
+            } else {
+                m_logger->error(std::format("[FaceAnalyser] model {} is not downloaded", Downloader::getFileNameFromUrl(modelUrls.at(i))));
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
 } // namespace Ffc

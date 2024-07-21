@@ -17,7 +17,7 @@ FaceDetectorYunet::FaceDetectorYunet(const std::shared_ptr<Ort::Env> &env,
     std::string modelPath = m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yunet").at("path");
 
     if (!FileSystem::fileExists(modelPath)) {
-        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yunet").at("url"),
+        bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yunet").at("url"),
                                                                "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);

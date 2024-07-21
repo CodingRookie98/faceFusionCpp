@@ -48,8 +48,8 @@ std::shared_ptr<cv::Mat> FaceMasker::createOcclusionMask(const Typing::VisionFra
     std::string modelPath = m_modelsInfoJson->at("faceMaskerModels").at("face_occluder").at("path");
     // 检查model是否存在，若不存在则下载
     if (!FileSystem::fileExists(modelPath)) {
-        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceMaskerModels").at("face_occluder").at("url"),
-                                                               "./models");
+        bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceMaskerModels").at("face_occluder").at("url"),
+                                                    "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);
         }
@@ -126,8 +126,8 @@ std::shared_ptr<cv::Mat> FaceMasker::createRegionMask(const Typing::VisionFrame 
     std::string modelPath = m_modelsInfoJson->at("faceMaskerModels").at("face_parser").at("path");
     // 检查model是否存在，若不存在则下载
     if (!FileSystem::fileExists(modelPath)) {
-        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceMaskerModels").at("face_parser").at("url"),
-                                                               "./models");
+        bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceMaskerModels").at("face_parser").at("url"),
+                                                    "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);
         }
@@ -233,5 +233,10 @@ std::shared_ptr<cv::Mat> FaceMasker::getBestMask(const std::vector<cv::Mat> &mas
     minMask.setTo(1, minMask > 1);
 
     return std::make_shared<cv::Mat>(std::move(minMask));
+}
+
+bool FaceMasker::preCheck() {
+    // Todo FaceMasker::preCheck()
+    return false;
 }
 } // namespace Ffc

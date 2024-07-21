@@ -26,8 +26,8 @@ void FaceEnhancer::init() {
 
     // 检查modelPath文件是否存在，不存在则下载
     if (!FileSystem::fileExists(modelPath)) {
-        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("url"),
-                                                               "./models");
+        bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("url"),
+                                                    "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);
         }
@@ -85,28 +85,8 @@ void FaceEnhancer::setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnal
 std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionFrame) {
     if (m_faceEnhancerModel == nullptr || *m_faceEnhancerModel != m_config->m_faceEnhancerModel) {
-        // Todo 完善其他EnhanceModel
-        switch (m_config->m_faceEnhancerModel) {
-        case Typing::FEM_Gfpgan_14:
-            m_modelName = "gfpgan_1.4";
-            break;
-        case Typing::FEM_CodeFormer:
-            m_modelName = "codeformer";
-            break;
-        default:
-            m_modelName = "gfpgan_1.4";
-            break;
-        }
+        postCheck();
         std::string modelPath = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("path");
-
-        // 检查modelPath是否存在, 不存在则下载
-        if (!FileSystem::fileExists(modelPath)) {
-            bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("url"),
-                                                                   "./models");
-            if (!downloadSuccess) {
-                throw std::runtime_error("Failed to download the model file: " + modelPath);
-            }
-        }
 
         this->createSession(modelPath);
         init();
@@ -204,6 +184,79 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
     dstImage = blendFrame(tempVisionFrame, *dstImage);
 
     return dstImage;
+}
+
+bool FaceEnhancer::postCheck() {
+    m_logger->info("[FaceEnhancer] post check");
+    std::string modelUrl = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("url");
+    std::string modelPath = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("path");
+    modelPath = FileSystem::resolveRelativePath(modelPath);
+
+    if (!m_config->m_skipDownload && !Downloader::isDownloadDone(modelUrl, modelPath)) {
+        m_logger->error("[FaceEnhancer] Model file is not downloaded: " + Downloader::getFileNameFromUrl(modelUrl));
+        return false;
+    }
+    if (!FileSystem::isFile(modelPath)) {
+        m_logger->error("[FaceEnhancer] Model file is not present: " + modelPath);
+        return false;
+    }
+    return true;
+}
+
+bool FaceEnhancer::preCheck() {
+    m_logger->info("[FaceEnhancer] pre check");
+    switch (m_config->m_faceEnhancerModel) {
+    case Typing::FEM_Gfpgan_12:
+        m_modelName = "gfpgan_1.2";
+        break;
+    case Typing::FEM_Gfpgan_13:
+        m_modelName = "gfpgan_1.3";
+        break;
+    case Typing::FEM_Gfpgan_14:
+        m_modelName = "gfpgan_1.4";
+        break;
+    case Typing::FEM_CodeFormer:
+        m_modelName = "codeformer";
+        break;
+    case Typing::FEM_Gpen_bfr_256:
+        m_modelName = "gpen_bfr_256";
+        break;
+    case Typing::FEM_Gpen_bfr_512:
+        m_modelName = "gpen_bfr_512";
+        break;
+    case Typing::FEM_Gpen_bfr_1024:
+        m_modelName = "gpen_bfr_1024";
+        break;
+    case Typing::FEM_Gpen_bfr_2048:
+        m_modelName = "gpen_bfr_2048";
+        break;
+    case Typing::FEM_Restoreformer_plus_plus:
+        m_modelName = "restoreformer_plus_plus";
+        break;
+    default:
+        m_modelName = "gfpgan_1.4";
+        break;
+    }
+    std::string modelPath = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("path");
+
+    // 检查modelPath是否存在, 不存在则下载
+    if (!FileSystem::fileExists(modelPath)) {
+        std::string url = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("url");
+        bool downloadSuccess = Downloader::download(url, "./models");
+        if (!downloadSuccess) {
+            m_logger->error(std::format("Failed to download the model file: {}", url));
+            return false;
+        } else {
+            m_logger->info(std::format("Downloaded the model file: {}", modelPath));
+            return true;
+        }
+    }
+    return true;
+}
+
+bool FaceEnhancer::preProcess() {
+    // Todo 完成preProcess
+    return false;
 }
 
 } // namespace Ffc

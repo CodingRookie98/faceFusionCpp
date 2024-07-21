@@ -17,7 +17,7 @@ FaceDetectorGenderAge::FaceDetectorGenderAge(const std::shared_ptr<Ort::Env> &en
     std::string modelPath = m_modelsInfoJson->at("faceAnalyserModels").at("gender_age").at("path");
 
     if (!FileSystem::fileExists(modelPath)) {
-        bool downloadSuccess = Downloader::downloadFileFromURL(m_modelsInfoJson->at("faceAnalyserModels").at("gender_age").at("url"),
+        bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceAnalyserModels").at("gender_age").at("url"),
                                                                "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);
