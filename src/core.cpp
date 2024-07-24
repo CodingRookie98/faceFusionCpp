@@ -27,7 +27,7 @@ Core::Core() {
 
 void Core::forceDownload() {
     std::unordered_set<std::string> modelUrls;
-    
+
     auto faceAnalyserModels = m_modelsInfoJson->at("faceAnalyserModels");
     for (const auto &model : faceAnalyserModels) {
         modelUrls.insert(model.at("url").get<std::string>());
@@ -49,11 +49,11 @@ void Core::forceDownload() {
 
 void Core::run() {
     m_logger->setLogLevel(m_config->m_logLevel);
-    
+
     if (m_config->m_forceDownload) {
         this->forceDownload();
     }
-    
+
     if (!preCheck() || !m_faceAnalyser->preCheck() || !m_faceMasker->preCheck()) {
         return;
     }
@@ -62,7 +62,7 @@ void Core::run() {
     for (const auto &processor : *getFrameProcessors()) {
         processor->preCheck();
     }
-    
+
     conditionalProcess();
 }
 
@@ -72,7 +72,11 @@ void Core::conditionalProcess() {
         while (!processor->postCheck()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
-        // Todo processor.preProcess
+        processor->preProcess({"output"});
+    }
+    conditionalAppendReferenceFaces();
+    if (FileSystem::hasImage(m_config->m_targetPaths)) {
+        processImages(startTime);
     }
 }
 
@@ -96,5 +100,87 @@ std::shared_ptr<std::vector<std::shared_ptr<ProcessorBase>>> Core::getFrameProce
 bool Core::preCheck() const {
     // Todo do something
     return true;
+}
+
+void Core::conditionalAppendReferenceFaces() {
+    if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference
+        && m_faceStore->getReferenceFaces().empty()) {
+        std::unordered_set<std::string> sourcePaths = m_config->m_sourcePaths;
+        if (sourcePaths.empty()) {
+            m_logger->error("[Core] No image found in the source paths.");
+            return;
+        }
+
+        if (m_config->m_referenceFacePath.empty()) {
+            m_logger->error("[Core] Reference face path is empty.");
+            return;
+        }
+
+        if (FileSystem::isImage(m_config->m_referenceFacePath)) {
+            m_logger->error("[Core] Reference face path is not a valid image file.");
+            return;
+        }
+
+        auto sourceFrame = Vision::readStaticImages(sourcePaths);
+        auto sourceAverageFace = m_faceAnalyser->getAverageFace(sourceFrame);
+        auto referenceFrame = Vision::readStaticImage(m_config->m_referenceFacePath);
+        auto referenceFace = m_faceAnalyser->getOneFace(referenceFrame);
+        m_faceStore->appendReferenceFace("origin", *referenceFace);
+        if (!sourceAverageFace->isEmpty() && !referenceFace->isEmpty()) {
+            for (const auto &processor : *getFrameProcessors()) {
+                auto abstractFrame = processor->getReferenceFrame(*sourceAverageFace, *referenceFace, referenceFrame);
+                if (!abstractFrame.empty()) {
+                    m_faceStore->appendReferenceFace(typeid(*processor).name(), *sourceAverageFace);
+                }
+            }
+        } else {
+            m_logger->error("[Core] Source face or reference face is empty.");
+        }
+    }
+}
+
+void Core::processImages(const std::chrono::time_point<std::chrono::steady_clock> &startTime) {
+    auto targetImagePathsSet = FileSystem::filterImagePaths(m_config->m_targetPaths);
+    std::vector<std::string> targetImagePaths(targetImagePathsSet.begin(), targetImagePathsSet.end());
+    targetImagePathsSet.clear();
+
+    for (size_t i = 0; i < targetImagePaths.size(); ++i) {
+        m_logger->info(std::format("[Core] Start processing image {}/{}: {}", i + 1, targetImagePaths.size(), targetImagePaths[i]));
+        std::chrono::steady_clock::time_point tempStartTime = std::chrono::steady_clock::now();
+        processImage(targetImagePaths[i], tempStartTime);
+        std::chrono::duration<double> elapsedSeconds = std::chrono::steady_clock::now() - tempStartTime;
+        m_logger->info(std::format("[Core] Finish processing image {}/{} Use {} seconds", i + 1, targetImagePaths.size(), elapsedSeconds));
+    }
+    FileSystem::removeDirectory(FileSystem::getTempPath());
+    m_logger->info(std::format("[Core] All images processed successfully."));
+}
+
+void Core::processImage(const std::string &imagePath,
+                        const std::chrono::time_point<std::chrono::steady_clock> &startTime) {
+    std::string tempPath = FileSystem::getTempPath();
+    const auto &targetImagePath = imagePath;
+    if (FileSystem::copyImageToTemp(targetImagePath, m_config->m_outputImageResolution)) {
+        m_logger->debug("[Core] Copy target image to temp path successfully.");
+    } else {
+        m_logger->error("[Core] Copy target image to temp path failed.");
+        return;
+    }
+    auto tempTargetImagePath = tempPath + "/" + FileSystem::getFileName(targetImagePath);
+    for (const auto &processor : *getFrameProcessors()) {
+        processor->processImage(m_config->m_sourcePaths, tempTargetImagePath, tempTargetImagePath);
+    }
+
+    std::string normedOutputPath = FileSystem::normalizeOutputPath(targetImagePath, m_config->m_outputPath);
+    if (FileSystem::finalizeImage(tempTargetImagePath, normedOutputPath, m_config->m_outputImageResolution, m_config->m_outputImageQuality)) {
+        m_logger->debug("[Core] Finalize image successfully.");
+    } else {
+        m_logger->warn("[Core] Finalize image failed.");
+    }
+    FileSystem::removeFile(tempTargetImagePath);
+    if (FileSystem::isImage(normedOutputPath)) {
+        m_logger->info(std::format("[Core] Process image successfully. Output path: {}", normedOutputPath));
+    } else {
+        m_logger->error("[Core] Process image failed.");
+    }
 }
 } // namespace Ffc

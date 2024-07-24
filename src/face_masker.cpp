@@ -225,7 +225,7 @@ std::shared_ptr<cv::Mat> FaceMasker::getBestMask(const std::vector<cv::Mat> &mas
     for (size_t i = 1; i < masks.size(); ++i) {
         // Check if the current mask has the same size and type as minMask
         if (masks[i].size() != minMask.size() || masks[i].type() != minMask.type()) {
-            throw std::invalid_argument("All masks must have the same size and type.");
+            m_logger->error("[FaceMasker] All masks must have the same size and type.");
         }
         cv::min(minMask, masks[i], minMask);
     }
@@ -236,7 +236,31 @@ std::shared_ptr<cv::Mat> FaceMasker::getBestMask(const std::vector<cv::Mat> &mas
 }
 
 bool FaceMasker::preCheck() {
-    // Todo FaceMasker::preCheck()
-    return false;
+    std::string downloadDir = FileSystem::resolveRelativePath("./models");
+    std::vector<std::string> modelUrls = {
+        m_modelsInfoJson->at("faceMaskerModels").at("face_occluder").at("url"),
+        m_modelsInfoJson->at("faceMaskerModels").at("face_parser").at("url")
+    };
+    std::vector<std::string> modelPaths = {
+        m_modelsInfoJson->at("faceMaskerModels").at("face_occluder").at("path"),
+        m_modelsInfoJson->at("faceMaskerModels").at("face_parser").at("path")
+    };
+    
+    for (size_t i = 0; i < modelUrls.size(); ++i) {
+        modelPaths.at(i) = FileSystem::resolveRelativePath(modelPaths.at(i));
+        if (!FileSystem::isFile(modelPaths.at(i))) {
+            if (!m_config->m_skipDownload) {
+                bool downloadSuccess = Downloader::download(modelUrls.at(i), downloadDir);
+                if (!downloadSuccess) {
+                    m_logger->error(std::format("[FaceMasker] Failed to download the model file: {}", modelUrls.at(i)));
+                    return false;
+                }
+            } else {
+                m_logger->error(std::format("[FaceMasker] Model file not found: {}", modelPaths.at(i)));
+                return false;
+            }
+        }
+    }
+    return true;
 }
 } // namespace Ffc

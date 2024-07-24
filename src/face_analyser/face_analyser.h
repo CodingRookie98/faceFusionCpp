@@ -11,7 +11,7 @@
 #ifndef FACEFUSIONCPP_SRC_FACE_ANALYSER_H_
 #define FACEFUSIONCPP_SRC_FACE_ANALYSER_H_
 
-#include <opencv2/imgproc.hpp>
+#include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
 #include <unordered_map>
 #include <nlohmann/json.hpp>

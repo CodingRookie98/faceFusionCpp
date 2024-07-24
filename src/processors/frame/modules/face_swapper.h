@@ -39,11 +39,14 @@ public:
 
     bool preCheck() override;
     bool postCheck() override;
-    bool preProcess() override;
+    bool preProcess(const std::unordered_set<std::string> &processMode) override;
+    Typing::VisionFrame getReferenceFrame(const Typing::Face &sourceFace,
+                                          const Typing::Face &targetFace,
+                                          const Typing::VisionFrame &tempVisionFrame) override;
 
     void processImage(const std::unordered_set<std::string> &sourcePaths,
                       const std::string &targetPath,
-                      const std::string &outputPath);
+                      const std::string &outputPath) override;
 
 private:
     std::shared_ptr<Typing::VisionFrame> processFrame(const Typing::Faces &referenceFaces,

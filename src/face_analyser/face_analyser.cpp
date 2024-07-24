@@ -422,7 +422,7 @@ FaceAnalyser::filterByGender(std::shared_ptr<Typing::Faces> faces, const EnumFac
 bool FaceAnalyser::preCheck() {
     std::vector<std::string> modelUrls;
     std::vector<std::string> modelPaths;
-    std::string outputDir = FileSystem::resolveRelativePath("./models");
+    std::string downloadDir = FileSystem::resolveRelativePath("./models");
 
     modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68").at("url").get<std::string>());
     modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68_5").at("url").get<std::string>());
@@ -477,16 +477,19 @@ bool FaceAnalyser::preCheck() {
 
     for (size_t i = 0; i < modelPaths.size(); ++i) {
         modelPaths.at(i) = FileSystem::resolveRelativePath(modelPaths.at(i));
-        if (!Downloader::isDownloadDone(modelUrls.at(i), modelPaths.at(i))) {
+        if (!FileSystem::isFile(modelPaths.at(i))) {
             if (!m_config->m_skipDownload) {
-                Downloader::download(modelUrls.at(i), outputDir);
+                bool downloadSuccess = Downloader::download(modelUrls.at(i), downloadDir);
+                if (!downloadSuccess) {
+                    m_logger->error(std::format("[FaceAnalyser] Failed to download the model file: {}", modelUrls.at(i)));
+                    return false;
+                }
             } else {
-                m_logger->error(std::format("[FaceAnalyser] model {} is not downloaded", Downloader::getFileNameFromUrl(modelUrls.at(i))));
+                m_logger->error(std::format("[FaceAnalyser] Model file not found: {}", modelPaths.at(i)));
                 return false;
             }
         }
     }
-
     return true;
 }
 } // namespace Ffc

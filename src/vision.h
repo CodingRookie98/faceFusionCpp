@@ -21,6 +21,7 @@ class Vision {
 public:
     static std::vector<cv::Mat> readStaticImages(const std::vector<std::string> &imagePaths);
     static cv::Mat readStaticImage(const std::string &imagePath);
+    static std::vector<cv::Mat> readStaticImages(const std::unordered_set<std::string> &imagePaths);
     static Typing::VisionFrame
     resizeFrameResolution(const Typing::VisionFrame &visionFrame, const cv::Size &cropSize);
     static bool writeImage(const cv::Mat &image, const std::string &imagePath);

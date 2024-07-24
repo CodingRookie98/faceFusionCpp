@@ -39,7 +39,8 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::processFrame(const Typing::Fac
                                                                const Face &sourceFace,
                                                                const VisionFrame &targetFrame) {
     if (m_faceAnalyser == nullptr) {
-        throw std::runtime_error("Face analyser is not set");
+        m_logger->error("[FaceSwapper] Face analyser is not set");
+        throw std::runtime_error("[FaceSwapper] Face analyser is not set");
     }
 
     std::shared_ptr<Typing::VisionFrame> resultFrame = std::make_shared<Typing::VisionFrame>(targetFrame);
@@ -67,7 +68,10 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::swapFace(const Face &sourceFac
                                                            const Face &targetFace,
                                                            const VisionFrame &targetFrame) {
     if (m_faceSwapperModel == nullptr || *m_faceSwapperModel != m_config->m_faceSwapperModel) {
-        postCheck();
+        m_faceSwapperModel = std::make_shared<Typing::EnumFaceSwapperModel>(m_config->m_faceSwapperModel);
+        if (*m_faceSwapperModel != m_config->m_faceSwapperModel) {
+            postCheck();
+        }
 
         std::string modelPath = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("path");
 
@@ -139,10 +143,11 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
     std::vector<Ort::Value> inputTensors;
     std::string modelType = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("type").get<std::string>();
     for (const auto &inputName : m_inputNames) {
+        static std::shared_ptr<std::vector<float>> inputImageData;
         if (std::string(inputName) == "source") {
             if (modelType == "blendswap" || modelType == "uniface") {
                 auto preparedSourceFrame = this->prepareSourceFrame(sourceFace);
-                static auto inputImageData = this->prepareCropFrameData(*preparedSourceFrame);
+                inputImageData = this->prepareCropFrameData(*preparedSourceFrame);
                 std::vector<int64_t> inputImageShape = {1, 3, preparedSourceFrame->rows, preparedSourceFrame->cols};
                 inputTensors.emplace_back(Ort::Value::CreateTensor<float>(m_memoryInfo, inputImageData->data(), inputImageData->size(), inputImageShape.data(), inputImageShape.size()));
             } else {
@@ -151,7 +156,7 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
                 inputTensors.emplace_back(Ort::Value::CreateTensor<float>(m_memoryInfo, inputEmbeddingData->data(), inputEmbeddingData->size(), inputEmbeddingShape.data(), inputEmbeddingShape.size()));
             }
         } else if (std::string(inputName) == "target") {
-            static auto inputImageData = this->prepareCropFrameData(*preparedTargetFrameBGR);
+            inputImageData = this->prepareCropFrameData(*preparedTargetFrameBGR);
             std::vector<int64_t> inputImageShape = {1, 3, m_inputHeight, m_inputWidth};
             inputTensors.emplace_back(Ort::Value::CreateTensor<float>(m_memoryInfo, inputImageData->data(), inputImageData->size(), inputImageShape.data(), inputImageShape.size()));
         }
@@ -189,7 +194,7 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
         cropMask.setTo(1, cropMask > 1);
     }
 
-    auto bestCropMask = FaceMasker::getBestMask(cropMasks);
+    auto bestCropMask = m_faceMasker->getBestMask(cropMasks);
 
     auto dstImage = FaceHelper::pasteBack(targetFrame, resultMat, *bestCropMask,
                                           std::get<1>(*croppedTargetFrameAndAffineMat));
@@ -275,8 +280,7 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::prepareSourceFrame(const Face 
 }
 
 bool FaceSwapper::preCheck() {
-    m_logger->info("FaceSwapper: preCheck");
-    m_faceSwapperModel = std::make_shared<Typing::EnumFaceSwapperModel>(m_config->m_faceSwapperModel);
+    m_logger->info("[FaceSwapper] preCheck");
     switch (m_config->m_faceSwapperModel) {
     case Typing::FSM_Inswapper_128:
         m_modelName = "inswapper_128";
@@ -306,18 +310,20 @@ bool FaceSwapper::preCheck() {
     }
 
     std::string modelPath = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("path");
-    modelPath = FileSystem::resolveRelativePath(modelPath);
+    std::string modelUrl = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("url");
+    std::string downloadDir = FileSystem::resolveRelativePath("./models");
 
     // 检查modelPath是否存在, 不存在则下载
-    if (!FileSystem::fileExists(modelPath)) {
-        std::string url = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("url");
-        bool downloadSuccess = Downloader::download(url, "./models");
-        if (!downloadSuccess) {
-            m_logger->error(std::format("Failed to download the model file: {}", url));
-            return false;
+    if (!FileSystem::isFile(modelPath)) {
+        if (!m_config->m_skipDownload) {
+            bool downloadSuccess = Downloader::download(modelUrl, downloadDir);
+            if (!downloadSuccess) {
+                m_logger->error(std::format("[FaceSwapper] Failed to download the model file: {}", modelUrl));
+                return false;
+            }
         } else {
-            m_logger->info(std::format("Downloaded the model file: {}", modelPath));
-            return true;
+            m_logger->error(std::format("[FaceSwapper] Model file is not Found: {}", modelPath));
+            return false;
         }
     }
     return true;
@@ -340,8 +346,45 @@ bool FaceSwapper::postCheck() {
     return true;
 }
 
-bool FaceSwapper::preProcess() {
-    // Todo 完成preProcess
+bool FaceSwapper::preProcess(const std::unordered_set<std::string> &processMode) {
+    m_logger->info("[FaceSwapper] preProcess");
+    std::unordered_set<std::string> sourcePaths = FileSystem::filterImagePaths(m_config->m_sourcePaths);
+    std::unordered_set<std::string> targetPaths = FileSystem::filterImagePaths(m_config->m_targetPaths);
+    if (!FileSystem::hasImage(sourcePaths)) {
+        m_logger->error("[FaceSwapper] No source image found");
+        return false;
+    }
+
+    auto sourceFrames = Vision::readStaticImages(sourcePaths);
+    for (const auto &sourceFrame : sourceFrames) {
+        auto face = m_faceAnalyser->getOneFace(sourceFrame);
+        if (face == nullptr || face->isEmpty()) {
+            m_logger->error("[FaceSwapper] No face found in source image");
+        }
+    }
+    if (processMode.contains("output") || processMode.contains("preview")) {
+        if (targetPaths.empty()) {
+            m_logger->error("[FaceSwapper] No target image or video found");
+            return false;
+        }
+    }
+    if (processMode.contains("output")) {
+        for (const auto &targetPath : targetPaths) {
+            std::string outputPath = FileSystem::resolveRelativePath(m_config->m_outputPath);
+            if (!FileSystem::directoryExists(outputPath)) {
+                FileSystem::createDirectory(outputPath);
+            }
+            if (FileSystem::normalizeOutputPath(targetPath, outputPath).empty()) {
+                m_logger->error("[FaceSwapper] Invalid output path: " + m_config->m_outputPath);
+                return false;
+            }
+        }
+    }
+
     return false;
+}
+
+Typing::VisionFrame FaceSwapper::getReferenceFrame(const Face &sourceFace, const Face &targetFace, const VisionFrame &tempVisionFrame) {
+    return *swapFace(sourceFace, targetFace, tempVisionFrame);
 }
 } // namespace Ffc

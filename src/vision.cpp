@@ -57,6 +57,7 @@ bool Vision::writeImage(const cv::Mat &image, const std::string &imagePath) {
     }
     return false;
 }
+
 cv::Size Vision::unpackResolution(const std::string &resolution) {
     int width = 0;
     int height = 0;
@@ -69,6 +70,18 @@ cv::Size Vision::unpackResolution(const std::string &resolution) {
         throw std::invalid_argument("Invalid dimensions format");
     }
 
-    return cv::Size(width, height);
+    return {width, height};
+}
+
+std::vector<cv::Mat> Vision::readStaticImages(const std::unordered_set<std::string> &imagePaths) {
+    std::vector<cv::Mat> images;
+    for (const auto &imagePath : imagePaths) {
+        cv::Mat image = readStaticImage(imagePath);
+        if (!image.empty()) {
+            images.emplace_back(image);
+        }
+    }
+
+    return images;
 }
 } // namespace Ffc

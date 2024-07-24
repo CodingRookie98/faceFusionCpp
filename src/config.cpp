@@ -125,6 +125,7 @@ void Config::frameProcessors() {
     } else {
         m_faceEnhancerModel = Typing::EnumFaceEnhancerModel::FEM_Gfpgan_14;
     }
+    
     value = m_ini.GetValue("frame_processors", "face_enhancer_blend", "80");
     if (!value.empty()) {
         m_faceEnhancerBlend = std::stoi(value);
@@ -136,6 +137,7 @@ void Config::frameProcessors() {
     } else {
         m_faceEnhancerBlend = 80;
     }
+    
     value = m_ini.GetValue("frame_processors", "face_swapper_model", "inswapper_128_fp16");
     if (!value.empty()) {
         if (value == "inswapper_128_fp16") {
@@ -151,7 +153,7 @@ void Config::frameProcessors() {
         } else if (value == "blendswap_256") {
             m_faceSwapperModel = Typing::EnumFaceSwapperModel::FSM_Blendswap_256;
         } else {
-            std::cerr << "Invalid face swapper model: " << value << " Use Default: inswapper_128_fp16" << std::endl;
+            m_logger->warn(std::format("[Config] Invalid face swapper model: {}, Use Default: inswapper_128_fp16", value));
             m_faceSwapperModel = Typing::EnumFaceSwapperModel::FSM_Inswapper_128_fp16;
         }
     } else {
@@ -416,6 +418,14 @@ void Config::general() {
             m_sourcePaths.insert(value);
         } else if (FileSystem::isDirectory(value)) {
             m_sourcePaths = FileSystem::listFilesInDirectory(value);
+            if (m_sourcePaths.empty()) {
+                m_logger->warn("[Config] source_dir_or_path is an empty directory.");
+            } else {
+                m_sourcePaths = FileSystem::filterImagePaths(m_sourcePaths);
+                if (m_sourcePaths.empty()) {
+                    m_logger->warn("[Config] source_dir_or_path does not contain any valid image files.");
+                }
+            }
         } else {
             m_logger->warn("[Config] source_dir_or_path is not a valid path or directory.");
         }
@@ -450,9 +460,9 @@ void Config::general() {
 
     value = m_ini.GetValue("general", "output_dir_or_path", "./output");
     if (!value.empty()) {
-        m_outputPath = value;
+        m_outputPath = FileSystem::resolveRelativePath(value);
     } else {
-        m_outputPath = "./output";
+        m_outputPath = FileSystem::resolveRelativePath("./output");
         m_logger->warn("[Config] output_dir_or_path is not set. Use default: ./output");
     }
 }
@@ -508,6 +518,7 @@ void Config::misc() {
         m_logLevel = Logger::LogLevel::Info;
     }
 }
+
 std::shared_ptr<Config> Config::getInstance(const std::string &configPath) {
     static std::shared_ptr<Config> instance;
     static std::once_flag flag;

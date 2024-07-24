@@ -46,15 +46,6 @@ void FaceEnhancer::init() {
     m_size = cv::Size(iVec.at(0), iVec.at(1));
 }
 
-void FaceEnhancer::processImage(const std::string &targetPath, const std::string &outputPath) {
-    Typing::Faces referenceFaces{};
-    Typing::VisionFrame targetFrame = Vision::readStaticImage(targetPath);
-    auto result = processFrame(referenceFaces, targetFrame);
-    if (result) {
-        Vision::writeImage(*result, outputPath);
-    }
-}
-
 std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::processFrame(const Typing::Faces &referenceFaces,
                            const Typing::VisionFrame &targetFrame) {
@@ -118,12 +109,14 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
     for (int c = 0; c < 3; c++) {
         bgrChannels[c].convertTo(bgrChannels[c], CV_32FC1, 1 / (255.0 * 0.5), -1.0);
     }
+
     const int imageArea = m_inputHeight * m_inputWidth;
+    m_inputImageData.clear();
     m_inputImageData.resize(3 * imageArea);
     size_t singleChnSize = imageArea * sizeof(float);
-    memcpy(this->m_inputImageData.data(), (float *)bgrChannels[2].data, singleChnSize); /// rgb顺序
-    memcpy(this->m_inputImageData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
-    memcpy(this->m_inputImageData.data() + imageArea * 2, (float *)bgrChannels[0].data, singleChnSize);
+    memcpy(m_inputImageData.data(), (float *)bgrChannels[2].data, singleChnSize); /// rgb顺序
+    memcpy(m_inputImageData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
+    memcpy(m_inputImageData.data() + imageArea * 2, (float *)bgrChannels[0].data, singleChnSize);
 
     std::vector<Ort::Value> inputTensors;
     for (const auto &name : m_inputNames) {
@@ -175,7 +168,7 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
     cv::merge(channelMats, resultMat);
     resultMat.convertTo(resultMat, CV_8UC3);
 
-    auto bestMask = FaceMasker::getBestMask(cropMaskVec);
+    auto bestMask = m_faceMasker->getBestMask(cropMaskVec);
     bestMask->setTo(0, *bestMask < 0); // 可有可无，只是保持与python版本的一致性
     bestMask->setTo(1, *bestMask > 1);
 
@@ -205,6 +198,7 @@ bool FaceEnhancer::postCheck() {
 
 bool FaceEnhancer::preCheck() {
     m_logger->info("[FaceEnhancer] pre check");
+
     switch (m_config->m_faceEnhancerModel) {
     case Typing::FEM_Gfpgan_12:
         m_modelName = "gfpgan_1.2";
@@ -238,25 +232,63 @@ bool FaceEnhancer::preCheck() {
         break;
     }
     std::string modelPath = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("path");
+    std::string modelUrl = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("url");
+    std::string downloadDir = FileSystem::resolveRelativePath("./models");
 
     // 检查modelPath是否存在, 不存在则下载
-    if (!FileSystem::fileExists(modelPath)) {
-        std::string url = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("url");
-        bool downloadSuccess = Downloader::download(url, "./models");
-        if (!downloadSuccess) {
-            m_logger->error(std::format("Failed to download the model file: {}", url));
-            return false;
+    if (!FileSystem::isFile(modelPath)) {
+        if (!m_config->m_skipDownload) {
+            bool downloadSuccess = Downloader::download(modelUrl, downloadDir);
+            if (!downloadSuccess) {
+                m_logger->error(std::format("[FaceEnhancer] Failed to download the model file: {}", modelUrl));
+                return false;
+            }
         } else {
-            m_logger->info(std::format("Downloaded the model file: {}", modelPath));
-            return true;
+            m_logger->error(std::format("[FaceEnhancer] Model file is not Found: {}", modelPath));
+            return false;
         }
     }
     return true;
 }
 
-bool FaceEnhancer::preProcess() {
-    // Todo 完成preProcess
+bool FaceEnhancer::preProcess(const std::unordered_set<std::string> &processMode) {
+    m_logger->info("[FaceEnhancer] preProcess");
+    std::unordered_set<std::string> targetPaths = FileSystem::filterImagePaths(m_config->m_targetPaths);
+
+    if (processMode.contains("output") || processMode.contains("preview")) {
+        if (targetPaths.empty()) {
+            m_logger->error("[FaceEnhancer] No target image or video found");
+            return false;
+        }
+    }
+    if (processMode.contains("output")) {
+        for (const auto &targetPath : targetPaths) {
+            std::string outputPath = FileSystem::resolveRelativePath(m_config->m_outputPath);
+            if (!FileSystem::directoryExists(outputPath)) {
+                FileSystem::createDirectory(outputPath);
+            }
+            if (FileSystem::normalizeOutputPath(targetPath, outputPath).empty()) {
+                m_logger->error("[FaceEnhancer] Invalid output path: " + m_config->m_outputPath);
+                return false;
+            }
+        }
+    }
+
     return false;
 }
 
+Typing::VisionFrame FaceEnhancer::getReferenceFrame(const Face &sourceFace, const Face &targetFace, const VisionFrame &tempVisionFrame) {
+    return *enhanceFace(targetFace, tempVisionFrame);
+}
+
+void FaceEnhancer::processImage(const std::unordered_set<std::string> &sourcePaths,
+                                const std::string &targetPath,
+                                const std::string &outputPath) {
+    Typing::Faces referenceFaces{};
+    Typing::VisionFrame targetFrame = Vision::readStaticImage(targetPath);
+    auto result = processFrame(referenceFaces, targetFrame);
+    if (result) {
+        Vision::writeImage(*result, outputPath);
+    }
+}
 } // namespace Ffc

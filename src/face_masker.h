@@ -20,6 +20,7 @@
 #include "file_system.h"
 #include "downloader.h"
 #include "config.h"
+#include "logger.h"
 
 namespace Ffc {
 class FaceMasker {
@@ -34,7 +35,7 @@ public:
     std::shared_ptr<cv::Mat> createRegionMask(const Typing::VisionFrame &cropVisionFrame,
                                               const std::unordered_set<Typing::EnumFaceMaskRegion> &regions = {Typing::EnumFaceMaskRegion::All});
 
-    static std::shared_ptr<cv::Mat> getBestMask(const std::vector<cv::Mat> &masks);
+    std::shared_ptr<cv::Mat> getBestMask(const std::vector<cv::Mat> &masks);
     bool preCheck();
 
 private:
@@ -45,6 +46,7 @@ private:
     std::shared_ptr<Ort::Env> m_env = nullptr;
     const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
     const std::shared_ptr<const Config> m_config;
+    std::shared_ptr<Logger> m_logger = Logger::getInstance();
     std::shared_ptr<std::unordered_map<Method, std::shared_ptr<OrtSession>>> m_maskerMap;
 };
 } // namespace Ffc
