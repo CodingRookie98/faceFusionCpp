@@ -74,7 +74,7 @@ void Core::conditionalProcess() {
         }
         processor->preProcess({"output"});
     }
-    conditionalAppendReferenceFaces();
+//    conditionalAppendReferenceFaces();
     if (FileSystem::hasImage(m_config->m_targetPaths)) {
         processImages(startTime);
     }
@@ -107,18 +107,17 @@ void Core::conditionalAppendReferenceFaces() {
         && m_faceStore->getReferenceFaces().empty()) {
         std::unordered_set<std::string> sourcePaths = m_config->m_sourcePaths;
         if (sourcePaths.empty()) {
-            m_logger->error("[Core] No image found in the source paths.");
-            return;
+            m_logger->warn("[Core] No image found in the source paths.");
         }
 
         if (m_config->m_referenceFacePath.empty()) {
             m_logger->error("[Core] Reference face path is empty.");
-            return;
+            std::exit(1);
         }
 
-        if (FileSystem::isImage(m_config->m_referenceFacePath)) {
+        if (!FileSystem::isImage(m_config->m_referenceFacePath)) {
             m_logger->error("[Core] Reference face path is not a valid image file.");
-            return;
+            std::exit(1);
         }
 
         auto sourceFrame = Vision::readStaticImages(sourcePaths);
@@ -142,17 +141,35 @@ void Core::conditionalAppendReferenceFaces() {
 void Core::processImages(const std::chrono::time_point<std::chrono::steady_clock> &startTime) {
     auto targetImagePathsSet = FileSystem::filterImagePaths(m_config->m_targetPaths);
     std::vector<std::string> targetImagePaths(targetImagePathsSet.begin(), targetImagePathsSet.end());
+    std::vector<std::string> normedOutputPaths;
     targetImagePathsSet.clear();
 
+    std::string tempPath = FileSystem::getTempPath();
     for (size_t i = 0; i < targetImagePaths.size(); ++i) {
-        m_logger->info(std::format("[Core] Start processing image {}/{}: {}", i + 1, targetImagePaths.size(), targetImagePaths[i]));
-        std::chrono::steady_clock::time_point tempStartTime = std::chrono::steady_clock::now();
-        processImage(targetImagePaths[i], tempStartTime);
-        std::chrono::duration<double> elapsedSeconds = std::chrono::steady_clock::now() - tempStartTime;
-        m_logger->info(std::format("[Core] Finish processing image {}/{} Use {} seconds", i + 1, targetImagePaths.size(), elapsedSeconds));
+        if (!FileSystem::copyImageToTemp(targetImagePaths[i], m_config->m_outputImageResolution)) {
+            m_logger->error(std::format("[Core] Copy target image to temp path failed. File: {}", targetImagePaths[i]));
+            continue;
+        }
+        auto tempTargetImagePath = tempPath + "/" + FileSystem::getFileName(targetImagePaths[i]);
+        targetImagePaths[i] = tempTargetImagePath;
+        normedOutputPaths.emplace_back(FileSystem::normalizeOutputPath(targetImagePaths[i], m_config->m_outputPath));
     }
+
+    for (const auto &processor : *getFrameProcessors()) {
+        processor->processImages(m_config->m_sourcePaths, targetImagePaths, targetImagePaths);
+    }
+
+    for (size_t i = 0; i < targetImagePaths.size(); ++i) {
+        if (!FileSystem::finalizeImage(targetImagePaths[i], normedOutputPaths[i], m_config->m_outputImageResolution, m_config->m_outputImageQuality)) {
+            m_logger->warn("[Core] Finalize image skipped.");
+            FileSystem::moveFile(targetImagePaths[i], normedOutputPaths[i]);
+        } else {
+            FileSystem::removeFile(targetImagePaths[i]);
+        }
+    }
+
     FileSystem::removeDirectory(FileSystem::getTempPath());
-    m_logger->info(std::format("[Core] All images processed successfully."));
+    m_logger->info(std::format("[Core] All images processed successfully. Output path: {}", FileSystem::resolveRelativePath(m_config->m_outputPath)));
 }
 
 void Core::processImage(const std::string &imagePath,
@@ -160,8 +177,6 @@ void Core::processImage(const std::string &imagePath,
     std::string tempPath = FileSystem::getTempPath();
     const auto &targetImagePath = imagePath;
     if (FileSystem::copyImageToTemp(targetImagePath, m_config->m_outputImageResolution)) {
-        m_logger->debug("[Core] Copy target image to temp path successfully.");
-    } else {
         m_logger->error("[Core] Copy target image to temp path failed.");
         return;
     }
@@ -171,12 +186,12 @@ void Core::processImage(const std::string &imagePath,
     }
 
     std::string normedOutputPath = FileSystem::normalizeOutputPath(targetImagePath, m_config->m_outputPath);
-    if (FileSystem::finalizeImage(tempTargetImagePath, normedOutputPath, m_config->m_outputImageResolution, m_config->m_outputImageQuality)) {
-        m_logger->debug("[Core] Finalize image successfully.");
+    if (!FileSystem::finalizeImage(tempTargetImagePath, normedOutputPath, m_config->m_outputImageResolution, m_config->m_outputImageQuality)) {
+        m_logger->warn("[Core] Finalize image skipped");
+        FileSystem::moveFile(tempTargetImagePath, normedOutputPath);
     } else {
-        m_logger->warn("[Core] Finalize image failed.");
+        FileSystem::removeFile(tempTargetImagePath);
     }
-    FileSystem::removeFile(tempTargetImagePath);
     if (FileSystem::isImage(normedOutputPath)) {
         m_logger->info(std::format("[Core] Process image successfully. Output path: {}", normedOutputPath));
     } else {

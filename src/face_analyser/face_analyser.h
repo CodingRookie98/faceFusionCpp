@@ -48,12 +48,25 @@ public:
                           const std::shared_ptr<const Config> &config);
     ~FaceAnalyser() = default;
 
-    std::shared_ptr<Typing::Face> getAverageFace(const std::vector<Typing::VisionFrame> &visionFrames, const int &position = 0);
+    std::shared_ptr<Typing::Face> getAverageFace(const std::vector<Typing::VisionFrame> &visionFrames,
+                                                 const int &position = 0);
 
     std::shared_ptr<Typing::Faces> getManyFaces(const Typing::VisionFrame &visionFrame);
 
-    std::shared_ptr<Typing::Face> getOneFace(const Typing::VisionFrame &visionFrame, const int &position = 0);
+    std::shared_ptr<Typing::Face> getOneFace(const Typing::VisionFrame &visionFrame,
+                                             const int &position = 0);
     
+    Typing::Faces findSimilarFaces(const Typing::Faces &referenceFaces,
+                                   const Typing::VisionFrame &targetVisionFrame,
+                                   const float &faceDistance);
+    
+    bool compareFace(const Typing::Face &face,
+                     const Typing::Face &referenceFace,
+                     const float &faceDistance);
+    
+    float calculateFaceDistance(const Typing::Face &face1,
+                                const Typing::Face &face2);
+
     bool preCheck();
 
 private:
@@ -99,14 +112,14 @@ private:
     std::shared_ptr<std::tuple<int, int>>
     detectGenderAge(const Typing::VisionFrame &visionFrame,
                     const Typing::BoundingBox &boundingBox);
-    
+
     static std::shared_ptr<Typing::Faces>
     sortByOrder(std::shared_ptr<Typing::Faces> faces,
                 const Typing::EnumFaceSelectorOrder &order);
-    
+
     static std::shared_ptr<Typing::Faces>
     filterByAge(std::shared_ptr<Typing::Faces> faces, const Typing::EnumFaceSelectorAge &age);
-    
+
     static std::shared_ptr<Typing::Faces>
     filterByGender(std::shared_ptr<Typing::Faces> faces, const Typing::EnumFaceSelectorGender &gender);
 };

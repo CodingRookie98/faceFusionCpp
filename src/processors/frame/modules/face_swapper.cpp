@@ -26,13 +26,71 @@ void FaceSwapper::processImage(const std::unordered_set<std::string> &sourcePath
                                const std::string &outputPath) {
     Typing::Faces referenceFaces;
 
-    std::vector<std::string> sourcePathsVector(sourcePaths.begin(), sourcePaths.end());
-    std::vector<cv::Mat> sourceFrames = Ffc::Vision::readStaticImages(sourcePathsVector);
+    std::vector<cv::Mat> sourceFrames = Ffc::Vision::readStaticImages(sourcePaths);
     std::shared_ptr<Typing::Face> sourceFace = m_faceAnalyser->getAverageFace(sourceFrames);
     auto targetFrame = Ffc::Vision::readStaticImage(targetPath);
 
     auto resultFrame = processFrame(referenceFaces, *sourceFace, targetFrame);
     Ffc::Vision::writeImage(*resultFrame, outputPath);
+}
+
+void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePaths,
+                                const std::vector<std::string> &targetPaths,
+                                const std::vector<std::string> &outputPaths) {
+    if (targetPaths.size() != outputPaths.size()) {
+        m_logger->error("[FaceSwapper] The number of target paths and output paths must be equal");
+        throw std::runtime_error("[FaceSwapper] The number of target paths and output paths must be equal");
+    }
+    if (sourcePaths.empty()) {
+        m_logger->error("[FaceSwapper] No source paths provided");
+        throw std::runtime_error("[FaceSwapper] No source paths provided");
+    }
+    if (targetPaths.empty()) {
+        m_logger->error("[FaceSwapper] No target paths provided");
+        throw std::runtime_error("[FaceSwapper] No target paths provided");
+    }
+
+    //    using namespace indicators;
+    //    // Hide cursor
+    //    show_console_cursor(false);
+    //
+    //    indicators::ProgressBar bar{
+    //        option::BarWidth{50},
+    //        option::MaxProgress{static_cast<int64_t>(targetPaths.size())},
+    //        option::Start{" ["},
+    //        option::Fill{"█"},
+    //        option::Lead{"█"},
+    //        option::Remainder{"-"},
+    //        option::End{"]"},
+    //        option::PrefixText{"[FaceSwapper] Processing images 👀"},
+    //        option::ForegroundColor{Color::green},
+    //        option::ShowElapsedTime{true},
+    //        option::ShowRemainingTime{true},
+    //        option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}};
+
+    std::vector<cv::Mat> sourceFrames = Ffc::Vision::readStaticImages(sourcePaths);
+    std::shared_ptr<Typing::Face> sourceFace = m_faceAnalyser->getAverageFace(sourceFrames);
+    Typing::Faces referenceFaces;
+    if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
+        if (m_config->m_referenceFacePath.empty()) {
+            m_logger->error("[FaceSwapper] Reference face path is empty");
+            throw std::runtime_error("[FaceSwapper] Reference face path is empty");
+        }
+        auto tempVisionFrame = Ffc::Vision::readStaticImage(m_config->m_referenceFacePath);
+        auto tempFace = m_faceAnalyser->getOneFace(tempVisionFrame, m_config->m_referenceFacePosition);
+        referenceFaces.emplace_back(std::move(*tempFace));
+    }
+
+    for (int i = 0; i < targetPaths.size(); ++i) {
+        auto targetFrame = Ffc::Vision::readStaticImage(targetPaths[i]);
+        auto resultFrame = processFrame(referenceFaces, *sourceFace, targetFrame);
+        Ffc::Vision::writeImage(*resultFrame, outputPaths[i]);
+        m_logger->info(std::format("[FaceSwapper] Processed image {}/{}", i + 1, targetPaths.size()));
+        //        bar.tick();
+    }
+
+    // Show cursor
+    //    show_console_cursor(true);
 }
 
 std::shared_ptr<Typing::VisionFrame> FaceSwapper::processFrame(const Typing::Faces &referenceFaces,
@@ -57,8 +115,14 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::processFrame(const Typing::Fac
             resultFrame = swapFace(sourceFace, *targetFace, *resultFrame);
         }
     } else if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
-        // Todo Reference
-        int a = 0;
+        Typing::Faces similarFaces = m_faceAnalyser->findSimilarFaces(referenceFaces, targetFrame, m_config->m_referenceFaceDistance);
+        if (!similarFaces.empty()) {
+            for (const auto &similarFace : similarFaces) {
+                resultFrame = swapFace(sourceFace, similarFace, *resultFrame);
+            }
+        } else {
+            m_logger->error("[FaceSwapper] No similar faces found");
+        }
     }
 
     return resultFrame;
@@ -67,42 +131,6 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::processFrame(const Typing::Fac
 std::shared_ptr<Typing::VisionFrame> FaceSwapper::swapFace(const Face &sourceFace,
                                                            const Face &targetFace,
                                                            const VisionFrame &targetFrame) {
-    if (m_faceSwapperModel == nullptr || *m_faceSwapperModel != m_config->m_faceSwapperModel) {
-        m_faceSwapperModel = std::make_shared<Typing::EnumFaceSwapperModel>(m_config->m_faceSwapperModel);
-        if (*m_faceSwapperModel != m_config->m_faceSwapperModel) {
-            postCheck();
-        }
-
-        std::string modelPath = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("path");
-
-        if (m_modelName == "inswapper_128" || m_modelName == "inswapper_128_fp16") {
-            // Load ONNX model as a protobuf message
-            onnx::ModelProto modelProto;
-            std::string model128Path = m_modelsInfoJson->at("faceSwapperModels").at("inswapper_128").at("path");
-            std::ifstream input(modelPath, std::ios::binary);
-            if (!modelProto.ParseFromIstream(&input)) {
-                throw std::runtime_error("Failed to load model.");
-            }
-            // Access the initializer
-            const onnx::TensorProto &initializer = modelProto.graph().initializer(modelProto.graph().initializer_size() - 1);
-            // Convert initializer to an array
-            m_initializerArray.clear();
-            if (m_modelName == "inswapper_128") {
-                m_initializerArray.assign(initializer.float_data().begin(), initializer.float_data().end());
-            } else {
-                // fp_16
-                std::string rawData = initializer.raw_data();
-                auto data = reinterpret_cast<const float *>(rawData.data());
-                m_initializerArray.assign(data, data + rawData.size() / sizeof(float));
-            }
-        } else {
-            m_initializerArray.clear();
-        }
-
-        this->createSession(modelPath);
-        init();
-    }
-
     auto resultFrame = this->applySwap(sourceFace, targetFace, targetFrame);
     return resultFrame;
 }
@@ -356,22 +384,31 @@ bool FaceSwapper::preProcess(const std::unordered_set<std::string> &processMode)
     }
 
     auto sourceFrames = Vision::readStaticImages(sourcePaths);
+    int noFaces = 0;
     for (const auto &sourceFrame : sourceFrames) {
         auto face = m_faceAnalyser->getOneFace(sourceFrame);
         if (face == nullptr || face->isEmpty()) {
-            m_logger->error("[FaceSwapper] No face found in source image");
+            noFaces++;
+            m_logger->warn("[FaceSwapper] No face found in one of source images");
         }
     }
+    if (noFaces == sourceFrames.size()) {
+        m_logger->error("[FaceSwapper] No face found in all of source images");
+        return false;
+    }
+
     if (processMode.contains("output") || processMode.contains("preview")) {
         if (targetPaths.empty()) {
             m_logger->error("[FaceSwapper] No target image or video found");
             return false;
         }
     }
+
     if (processMode.contains("output")) {
         for (const auto &targetPath : targetPaths) {
             std::string outputPath = FileSystem::resolveRelativePath(m_config->m_outputPath);
             if (!FileSystem::directoryExists(outputPath)) {
+                m_logger->info("[FaceSwapper] Create output directory: " + outputPath);
                 FileSystem::createDirectory(outputPath);
             }
             if (FileSystem::normalizeOutputPath(targetPath, outputPath).empty()) {
@@ -381,10 +418,48 @@ bool FaceSwapper::preProcess(const std::unordered_set<std::string> &processMode)
         }
     }
 
-    return false;
+    if (m_faceSwapperModel == nullptr || *m_faceSwapperModel != m_config->m_faceSwapperModel) {
+        if (m_faceSwapperModel != nullptr && *m_faceSwapperModel != m_config->m_faceSwapperModel) {
+            postCheck();
+        }
+        m_faceSwapperModel = std::make_shared<Typing::EnumFaceSwapperModel>(m_config->m_faceSwapperModel);
+
+        std::string modelPath = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("path");
+
+        if (m_modelName == "inswapper_128" || m_modelName == "inswapper_128_fp16") {
+            // Load ONNX model as a protobuf message
+            onnx::ModelProto modelProto;
+            std::string model128Path = m_modelsInfoJson->at("faceSwapperModels").at("inswapper_128").at("path");
+            std::ifstream input(modelPath, std::ios::binary);
+            if (!modelProto.ParseFromIstream(&input)) {
+                m_logger->error("[FaceSwapper] Failed to parse the model: " + m_modelName);
+                throw std::runtime_error("Failed to load model.");
+            }
+            // Access the initializer
+            const onnx::TensorProto &initializer = modelProto.graph().initializer(modelProto.graph().initializer_size() - 1);
+            // Convert initializer to an array
+            m_initializerArray.clear();
+            if (m_modelName == "inswapper_128") {
+                m_initializerArray.assign(initializer.float_data().begin(), initializer.float_data().end());
+            } else {
+                // fp_16
+                std::string rawData = initializer.raw_data();
+                auto data = reinterpret_cast<const float *>(rawData.data());
+                m_initializerArray.assign(data, data + rawData.size() / sizeof(float));
+            }
+        } else {
+            m_initializerArray.clear();
+        }
+
+        this->createSession(modelPath);
+        init();
+    }
+
+    return true;
 }
 
 Typing::VisionFrame FaceSwapper::getReferenceFrame(const Face &sourceFace, const Face &targetFace, const VisionFrame &tempVisionFrame) {
     return *swapFace(sourceFace, targetFace, tempVisionFrame);
 }
+
 } // namespace Ffc

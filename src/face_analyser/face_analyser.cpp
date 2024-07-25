@@ -14,7 +14,8 @@ namespace Ffc {
 FaceAnalyser::FaceAnalyser(const std::shared_ptr<Ort::Env> &env,
                            const std::shared_ptr<const nlohmann::json> &modelsInfoJson,
                            const std::shared_ptr<const Config> &config) :
-    m_config(config), m_modelsInfoJson(modelsInfoJson) {
+    m_config(config),
+    m_modelsInfoJson(modelsInfoJson) {
     this->m_env = env;
 }
 
@@ -491,5 +492,35 @@ bool FaceAnalyser::preCheck() {
         }
     }
     return true;
+}
+
+float FaceAnalyser::calculateFaceDistance(const Face &face1, const Face &face2) {
+    float distance = 0.0f;
+    if (!face1.normedEmbedding.empty() && !face2.normedEmbedding.empty()) {
+        float dotProduct = std::inner_product(face1.normedEmbedding.begin(), face1.normedEmbedding.end(), face2.normedEmbedding.begin(), 0.0f);
+        distance = 1.0f - dotProduct;
+    }
+    return distance;
+}
+
+bool FaceAnalyser::compareFace(const Face &face, const Face &referenceFace, const float &faceDistance) {
+    float resultFaceDistance = calculateFaceDistance(face, referenceFace);
+    return resultFaceDistance < faceDistance;
+}
+
+Typing::Faces FaceAnalyser::findSimilarFaces(const Faces &referenceFaces, const VisionFrame &targetVisionFrame, const float &faceDistance) {
+    Typing::Faces similarFaces;
+    auto manyFaces = getManyFaces(targetVisionFrame);
+
+    if (!manyFaces->empty()) {
+        for (const auto &referenceFace : referenceFaces) {
+            for (const auto &face : *manyFaces) {
+                if (compareFace(face, referenceFace, faceDistance)) {
+                    similarFaces.push_back(face);
+                }
+            }
+        }
+    }
+    return similarFaces;
 }
 } // namespace Ffc

@@ -16,7 +16,9 @@
 #include <fstream>
 #include <opencv2/opencv.hpp>
 #include <unordered_set>
-#include "nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
+//#include <indicators/cursor_control.hpp>
+//#include <indicators/progress_bar.hpp>
 #include "vision.h"
 #include "typing.h"
 #include "face_analyser/face_analyser.h"
@@ -47,6 +49,9 @@ public:
     void processImage(const std::unordered_set<std::string> &sourcePaths,
                       const std::string &targetPath,
                       const std::string &outputPath) override;
+    void processImages(const std::unordered_set<std::string> &sourcePaths,
+                       const std::vector<std::string> &targetPaths,
+                       const std::vector<std::string> &outputPaths) override;
 
 private:
     std::shared_ptr<Typing::VisionFrame> processFrame(const Typing::Faces &referenceFaces,

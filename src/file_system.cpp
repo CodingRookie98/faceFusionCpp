@@ -104,8 +104,13 @@ std::string FileSystem::normalizeOutputPath(const std::string &targetPath, const
         std::string targetFileExtension = targetPathObj.extension().string();
 
         if (isDirectory(outputPath)) {
-            std::string outputHash = std::to_string(std::hash<std::string>{}(targetFileName)).substr(0, 8);
-            return resolveRelativePath(outputPath + "/" + targetFileName + "_" + outputHash + targetFileExtension);
+            std::string suffix = generateRandomString(8);
+            std::string normedPath = resolveRelativePath(outputPath + "/" + targetFileName + "-" + suffix + targetFileExtension);
+            while (fileExists(normedPath)) {
+                suffix = generateRandomString(8);
+                normedPath = resolveRelativePath(outputPath + "/" + targetFileName + "-" + suffix + targetFileExtension);
+            }
+            return normedPath;
         } else {
             std::string outputDir = outputPathObj.parent_path().string();
             std::string outputFileName = outputPathObj.stem().string();
@@ -204,7 +209,7 @@ bool FileSystem::finalizeImage(const std::string &imagePath, const std::string &
 
     // 保存调整后的图像
     if (!cv::imwrite(outputPath, resizedImage, compression_params)) {
-//        std::cerr << "Could not write the image to: " << outputPath << std::endl;
+        //        std::cerr << "Could not write the image to: " << outputPath << std::endl;
         return false;
     }
 
@@ -224,5 +229,18 @@ void FileSystem::copyFile(const std::string &source, const std::string &destinat
 
 void FileSystem::moveFile(const std::string &source, const std::string &destination) {
     std::filesystem::rename(source, destination);
+}
+
+std::string FileSystem::generateRandomString(const size_t &length) {
+    const std::string characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    std::default_random_engine generator(static_cast<unsigned long>(std::time(0)));
+    std::uniform_int_distribution<size_t> distribution(0, characters.size() - 1);
+
+    std::string randomString;
+    for (size_t i = 0; i < length; ++i) {
+        randomString += characters[distribution(generator)];
+    }
+
+    return randomString;
 }
 } // namespace Ffc

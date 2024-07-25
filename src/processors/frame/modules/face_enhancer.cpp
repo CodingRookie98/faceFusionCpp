@@ -75,13 +75,6 @@ void FaceEnhancer::setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnal
 
 std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionFrame) {
-    if (m_faceEnhancerModel == nullptr || *m_faceEnhancerModel != m_config->m_faceEnhancerModel) {
-        postCheck();
-        std::string modelPath = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("path");
-
-        this->createSession(modelPath);
-        init();
-    }
     auto result = applyEnhance(targetFace, tempVisionFrame);
     return result;
 }
@@ -273,8 +266,19 @@ bool FaceEnhancer::preProcess(const std::unordered_set<std::string> &processMode
             }
         }
     }
+    
+    if (m_faceEnhancerModel == nullptr || *m_faceEnhancerModel != m_config->m_faceEnhancerModel) {
+        if (m_faceEnhancerModel != nullptr && *m_faceEnhancerModel != m_config->m_faceEnhancerModel) {
+            postCheck();
+        }
+        m_faceEnhancerModel = std::make_shared<Typing::EnumFaceEnhancerModel>(m_config->m_faceEnhancerModel);
+        std::string modelPath = m_modelsInfoJson->at("faceEnhancerModels").at(m_modelName).at("path");
 
-    return false;
+        this->createSession(modelPath);
+        init();
+    }
+
+    return true;
 }
 
 Typing::VisionFrame FaceEnhancer::getReferenceFrame(const Face &sourceFace, const Face &targetFace, const VisionFrame &tempVisionFrame) {
@@ -289,6 +293,25 @@ void FaceEnhancer::processImage(const std::unordered_set<std::string> &sourcePat
     auto result = processFrame(referenceFaces, targetFrame);
     if (result) {
         Vision::writeImage(*result, outputPath);
+    }
+}
+
+void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePaths,
+                                 const std::vector<std::string> &targetPaths,
+                                 const std::vector<std::string> &outputPaths) {
+    Typing::Faces referenceFaces;
+
+    if (targetPaths.size() != outputPaths.size()) {
+        m_logger->error("[FaceEnhancer] The number of target paths and output paths must be equal");
+        throw std::runtime_error("[FaceEnhancer] The number of target paths and output paths must be equal");
+    }
+
+    std::vector<cv::Mat> sourceFrames = Ffc::Vision::readStaticImages(sourcePaths);
+
+    for (int i = 0; i < targetPaths.size(); ++i) {
+        auto targetFrame = Ffc::Vision::readStaticImage(targetPaths[i]);
+        auto resultFrame = processFrame(referenceFaces, targetFrame);
+        Ffc::Vision::writeImage(*resultFrame, outputPaths[i]);
     }
 }
 } // namespace Ffc

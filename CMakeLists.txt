@@ -17,17 +17,14 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
 find_package(spdlog CONFIG REQUIRED)
 find_package(CURL REQUIRED)
+find_package(indicators CONFIG REQUIRED)
 
 target_include_directories(${ProgramName} PRIVATE ${SIMPLEINI_INCLUDE_DIRS})
-target_link_directories(${ProgramName} PRIVATE
-        ${VCPKG_INSTALLED_DIR}/x64-windows/lib
-)
-target_link_libraries(${ProgramName} PRIVATE
-        ${OpenCV_LIBS}
-)
-# 链接 ONNX Runtime库
+target_link_directories(${ProgramName} PRIVATE ${VCPKG_INSTALLED_DIR}/x64-windows/lib)
+target_link_libraries(${ProgramName} PRIVATE ${OpenCV_LIBS})
 target_link_libraries(${ProgramName} PRIVATE onnxruntime)
 target_link_libraries(${ProgramName} PRIVATE onnx onnx_proto)
 target_link_libraries(${ProgramName} PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(${ProgramName} PRIVATE spdlog::spdlog_header_only)
 target_link_libraries(${ProgramName} PRIVATE CURL::libcurl)
+#target_link_libraries(${ProgramName} PRIVATE indicators::indicators)

@@ -265,6 +265,7 @@ void Config::faceSelector() {
     } else {
         m_faceSelectorMode = Typing::EnumFaceSelectorMode::FS_Reference;
     }
+    
     value = m_ini.GetValue("face_selector", "face_selector_order", "left-right");
     if (!value.empty()) {
         if (value == "left-right") {
@@ -290,6 +291,7 @@ void Config::faceSelector() {
     } else {
         m_faceSelectorOrder = Typing::EnumFaceSelectorOrder::FSO_Left_Right;
     }
+    
     value = m_ini.GetValue("face_selector", "face_selector_age", "All");
     if (!value.empty()) {
         if (value == "child") {
@@ -309,6 +311,7 @@ void Config::faceSelector() {
     } else {
         m_faceSelectorAge = Typing::EnumFaceSelectorAge::FSA_All;
     }
+    
     value = m_ini.GetValue("face_selector", "face_selector_gender", "All");
     if (!value.empty()) {
         if (value == "male") {
@@ -324,6 +327,7 @@ void Config::faceSelector() {
     } else {
         m_faceSelectorGender = Typing::EnumFaceSelectorGender::FSG_All;
     }
+    
     value = m_ini.GetValue("face_selector", "reference_face_position", "0");
     if (!value.empty()) {
         m_referenceFacePosition = std::stoi(value);
@@ -333,6 +337,7 @@ void Config::faceSelector() {
     } else {
         m_referenceFacePosition = 0;
     }
+    
     value = m_ini.GetValue("face_selector", "reference_face_distance", "0.6");
     if (!value.empty()) {
         m_referenceFaceDistance = std::stof(value);
@@ -391,6 +396,7 @@ void Config::faceAnalyser() {
     } else {
         m_faceDetectorSize = cv::Size(640, 640);
     }
+    
     value = m_ini.GetValue("face_analyser", "face_detector_score", "0.5");
     if (!value.empty()) {
         m_faceDetectorScore = std::stof(value);
@@ -402,6 +408,7 @@ void Config::faceAnalyser() {
     } else {
         m_faceDetectorScore = 0.5f;
     }
+    
     value = m_ini.GetValue("face_analyser", "face_landmaker_score", "0.5");
     if (!value.empty()) {
         m_faceLandmarkerScore = std::stof(value);
@@ -453,6 +460,7 @@ void Config::general() {
             m_referenceFacePath = value;
         } else {
             m_logger->warn("[Config] reference_face_path is not a valid path or file.");
+            m_referenceFacePath = "";
         }
     } else {
         m_referenceFacePath = "";

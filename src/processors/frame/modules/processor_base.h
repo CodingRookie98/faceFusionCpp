@@ -30,8 +30,11 @@ public:
                                                   const Typing::Face &targetFace,
                                                   const Typing::VisionFrame &tempVisionFrame) = 0;
     virtual void processImage(const std::unordered_set<std::string> &sourcePaths,
-                         const std::string &targetPath,
-                         const std::string &outputPath) = 0;
+                              const std::string &targetPath,
+                              const std::string &outputPath) = 0;
+    virtual void processImages(const std::unordered_set<std::string> &sourcePaths,
+                               const std::vector<std::string> &targetPaths,
+                               const std::vector<std::string> &outputPaths) = 0;
 };
 
 } // namespace Ffc

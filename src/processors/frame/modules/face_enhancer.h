@@ -40,6 +40,9 @@ public:
     void processImage(const std::unordered_set<std::string> &sourcePaths,
                       const std::string &targetPath,
                       const std::string &outputPath) override;
+    void processImages(const std::unordered_set<std::string> &sourcePaths,
+                       const std::vector<std::string> &targetPaths,
+                       const std::vector<std::string> &outputPaths) override;
     void setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnalyser);
 
 private:

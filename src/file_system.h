@@ -16,6 +16,7 @@
 #include <opencv2/opencv.hpp>
 #include <unordered_set>
 #include <vector>
+#include <random>
 
 namespace Ffc {
 
@@ -44,6 +45,7 @@ public:
     static std::string getFileName(const std::string &filePath);
     static bool copyImageToTemp(const std::string &imagePath, const cv::Size &size = cv::Size(0, 0));
     static bool finalizeImage(const std::string &imagePath, const std::string &outputPath, const cv::Size &size = cv::Size(0, 0), const int &outputImageQuality = 100);
+    static std::string generateRandomString(const size_t &length);
 };
 
 } // namespace Ffc
