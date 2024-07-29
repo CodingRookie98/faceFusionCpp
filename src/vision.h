@@ -26,6 +26,7 @@ public:
     resizeFrameResolution(const Typing::VisionFrame &visionFrame, const cv::Size &cropSize);
     static bool writeImage(const cv::Mat &image, const std::string &imagePath);
     static cv::Size unpackResolution(const std::string& resolution);
+    static cv::Size restrictResolution(const cv::Size& resolution1, const cv::Size& resolution2);
 };
 
 } // namespace Ffc

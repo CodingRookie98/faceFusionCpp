@@ -19,7 +19,7 @@ std::shared_ptr<FaceStore> FaceStore::getInstance() {
 }
 
 FaceStore::FaceStore() {
-    m_staticFaces  = std::make_shared<std::unordered_map<std::string, Typing::Faces>>();
+    m_staticFaces = std::make_shared<std::unordered_map<std::string, Typing::Faces>>();
     m_referenceFaces = std::make_shared<std::unordered_map<std::string, Typing::Faces>>();
 }
 
@@ -36,10 +36,12 @@ void FaceStore::clearReferenceFaces() {
 }
 
 void FaceStore::setStaticFaces(const Typing::VisionFrame &visionFrame, const Typing::Faces &faces) {
+    std::unique_lock<std::shared_mutex> lock(m_rwMutex);
     (*m_staticFaces)[createFrameHash(visionFrame)] = faces;
 }
 
-Typing::Faces FaceStore::getStaticFaces(const Typing::VisionFrame &visionFrame) const {
+Typing::Faces FaceStore::getStaticFaces(const Typing::VisionFrame &visionFrame) {
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex);
     auto it = m_staticFaces->find(createFrameHash(visionFrame));
     if (it != m_staticFaces->end()) {
         return it->second;
@@ -50,15 +52,21 @@ Typing::Faces FaceStore::getStaticFaces(const Typing::VisionFrame &visionFrame) 
 void FaceStore::clearStaticFaces() {
     m_staticFaces->clear();
 }
+
 std::string FaceStore::createFrameHash(const Typing::VisionFrame &visionFrame) {
     // 获取 Mat 数据的指针和大小
     const uchar *data = visionFrame.data;
     size_t dataSize = visionFrame.total() * visionFrame.elemSize();
 
-    // 使用 std::hash 计算哈希值
-    std::hash<std::string> hasher;
-    std::string hashString(reinterpret_cast<const char *>(data), dataSize);
-    auto hashValue = hasher(hashString);
-    return std::to_string(hashValue);
+    // 最终计算并获取结果
+    unsigned char hash[SHA_DIGEST_LENGTH];
+    SHA1(reinterpret_cast<const unsigned char *>(data), dataSize, hash);
+    // 将哈希结果转换为十六进制字符串
+    std::ostringstream oss;
+    for (unsigned char i : hash) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << (int)i;
+    }
+
+    return oss.str();
 }
 } // namespace Ffc

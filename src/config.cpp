@@ -31,6 +31,7 @@ void Config::loadConfig() {
 
     general();
     misc();
+    execution();
     faceAnalyser();
     faceSelector();
     faceMasker();
@@ -532,5 +533,17 @@ std::shared_ptr<Config> Config::getInstance(const std::string &configPath) {
     static std::once_flag flag;
     std::call_once(flag, [&]() { instance = std::make_shared<Config>(); });
     return instance;
+}
+
+void Config::execution() {
+    std::string value = m_ini.GetValue("execution", "execution_thread_count", "1");
+    if (!value.empty()) {
+       m_executionThreadCount = std::stoi(value);
+       if (m_executionThreadCount < 1) {
+            m_executionThreadCount = 1;
+        }
+    } else {
+        m_executionThreadCount = 1;
+    }
 }
 } // namespace Ffc

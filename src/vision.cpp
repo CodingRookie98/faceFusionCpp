@@ -84,4 +84,10 @@ std::vector<cv::Mat> Vision::readStaticImages(const std::unordered_set<std::stri
 
     return images;
 }
+
+cv::Size Vision::restrictResolution(const cv::Size &resolution1, const cv::Size &resolution2) {
+    uint64_t area1 = static_cast<uint64_t>(resolution1.width) * resolution1.height;
+    uint64_t area2 = static_cast<uint64_t>(resolution2.width) * resolution2.height;
+    return area1 < area2 ? resolution1 : resolution2;
+}
 } // namespace Ffc

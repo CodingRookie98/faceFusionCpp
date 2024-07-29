@@ -134,44 +134,54 @@ std::shared_ptr<Typing::Faces> FaceAnalyser::getManyFaces(const Typing::VisionFr
     std::vector<Typing::FaceLandmark> resultLandmarks5, landmarks5;
     std::vector<Typing::Score> resultScores, scores;
     std::shared_ptr<Typing::Faces> resultFaces = std::make_shared<Typing::Faces>();
-    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yoloface)) {
-        auto result = this->detectWithYoloFace(visionFrame, m_config->m_faceDetectorSize);
-        std::tie(boundingBoxes, landmarks5, scores) = *result;
-        resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-        resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
-        resultScores.insert(resultScores.end(), scores.begin(), scores.end());
-    }
-    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Scrfd)) {
-        auto result = this->detectWithScrfd(visionFrame, m_config->m_faceDetectorSize);
-        std::tie(boundingBoxes, landmarks5, scores) = *result;
-        resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-        resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
-        resultScores.insert(resultScores.end(), scores.begin(), scores.end());
-    }
-    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Retina)) {
-        auto result = this->detectWithRetina(visionFrame, m_config->m_faceDetectorSize);
-        std::tie(boundingBoxes, landmarks5, scores) = *result;
-        resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-        resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
-        resultScores.insert(resultScores.end(), scores.begin(), scores.end());
-    }
-    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yunet)) {
-        auto result = this->detectWithYunet(visionFrame, m_config->m_faceDetectorSize);
-        std::tie(boundingBoxes, landmarks5, scores) = *result;
-        resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-        resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
-        resultScores.insert(resultScores.end(), scores.begin(), scores.end());
-    }
 
-    if (!resultBoundingBoxes.empty() && !resultLandmarks5.empty() && !resultScores.empty()) {
-        resultFaces = createFaces(visionFrame, std::make_shared<std::tuple<std::vector<Typing::BoundingBox>,
-                                                                           std::vector<Typing::FaceLandmark>,
-                                                                           std::vector<Typing::Score>>>(
-                                                   std::make_tuple(resultBoundingBoxes, resultLandmarks5, resultScores)));
+    Typing::Faces facesCache = m_faceStore->getStaticFaces(visionFrame);
+    if (!facesCache.empty()) {
+        resultFaces = std::make_shared<Typing::Faces>(std::move(facesCache));
+    } else {
+        if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+            || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yoloface)) {
+            auto result = this->detectWithYoloFace(visionFrame, m_config->m_faceDetectorSize);
+            std::tie(boundingBoxes, landmarks5, scores) = *result;
+            resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+            resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
+            resultScores.insert(resultScores.end(), scores.begin(), scores.end());
+        }
+        if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+            || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Scrfd)) {
+            auto result = this->detectWithScrfd(visionFrame, m_config->m_faceDetectorSize);
+            std::tie(boundingBoxes, landmarks5, scores) = *result;
+            resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+            resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
+            resultScores.insert(resultScores.end(), scores.begin(), scores.end());
+        }
+        if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+            || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Retina)) {
+            auto result = this->detectWithRetina(visionFrame, m_config->m_faceDetectorSize);
+            std::tie(boundingBoxes, landmarks5, scores) = *result;
+            resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+            resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
+            resultScores.insert(resultScores.end(), scores.begin(), scores.end());
+        }
+        if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
+            || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yunet)) {
+            auto result = this->detectWithYunet(visionFrame, m_config->m_faceDetectorSize);
+            std::tie(boundingBoxes, landmarks5, scores) = *result;
+            resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+            resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
+            resultScores.insert(resultScores.end(), scores.begin(), scores.end());
+        }
+
+        if (!resultBoundingBoxes.empty() && !resultLandmarks5.empty() && !resultScores.empty()) {
+            resultFaces = createFaces(visionFrame, std::make_shared<std::tuple<std::vector<Typing::BoundingBox>,
+                                                                               std::vector<Typing::FaceLandmark>,
+                                                                               std::vector<Typing::Score>>>(
+                                                       std::make_tuple(resultBoundingBoxes, resultLandmarks5, resultScores)));
+        }
+        
+        if (!resultFaces->empty()) {
+            m_faceStore->setStaticFaces(visionFrame, *resultFaces);
+        }
     }
 
     resultFaces = sortByOrder(resultFaces, m_config->m_faceSelectorOrder);

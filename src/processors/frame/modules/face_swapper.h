@@ -17,8 +17,6 @@
 #include <opencv2/opencv.hpp>
 #include <unordered_set>
 #include <nlohmann/json.hpp>
-//#include <indicators/cursor_control.hpp>
-//#include <indicators/progress_bar.hpp>
 #include "vision.h"
 #include "typing.h"
 #include "face_analyser/face_analyser.h"
@@ -27,6 +25,9 @@
 #include "config.h"
 #include "processor_base.h"
 #include "logger.h"
+#include "face_store.h"
+#include "progress_bar.h"
+#include <thread_pool/thread_pool.h>
 
 namespace Ffc {
 
@@ -87,6 +88,7 @@ private:
     std::vector<float> m_initializerArray;
     std::string m_modelName;
     std::shared_ptr<Logger> m_logger = Logger::getInstance();
+    std::shared_ptr<FaceStore> m_faceStore = FaceStore::getInstance();
 };
 
 } // namespace Ffc

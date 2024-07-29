@@ -136,11 +136,11 @@ std::shared_ptr<cv::Mat> FaceMasker::createRegionMask(const Typing::VisionFrame 
     std::shared_ptr<OrtSession> session = nullptr;
     if (!m_maskerMap->contains(Method::Region)) {
         session = std::make_shared<OrtSession>(m_env);
+        session->createSession(modelPath);
         m_maskerMap->emplace(Method::Region, session);
     } else {
         session = m_maskerMap->at(Method::Region);
     }
-    session->createSession(modelPath);
     const int inputHeight = session->m_inputNodeDims[0][2];
     const int inputWidth = session->m_inputNodeDims[0][3];
 
@@ -196,7 +196,6 @@ std::shared_ptr<cv::Mat> FaceMasker::createRegionMask(const Typing::VisionFrame 
 
     cv::Mat resultMask = masks.front().clone();
     for (size_t i = 1; i < masks.size(); ++i) {
-        // 我可真机智
         resultMask = cv::max(resultMask, masks[i]);
     }
     resultMask.setTo(0, resultMask < 0);
@@ -239,13 +238,11 @@ bool FaceMasker::preCheck() {
     std::string downloadDir = FileSystem::resolveRelativePath("./models");
     std::vector<std::string> modelUrls = {
         m_modelsInfoJson->at("faceMaskerModels").at("face_occluder").at("url"),
-        m_modelsInfoJson->at("faceMaskerModels").at("face_parser").at("url")
-    };
+        m_modelsInfoJson->at("faceMaskerModels").at("face_parser").at("url")};
     std::vector<std::string> modelPaths = {
         m_modelsInfoJson->at("faceMaskerModels").at("face_occluder").at("path"),
-        m_modelsInfoJson->at("faceMaskerModels").at("face_parser").at("path")
-    };
-    
+        m_modelsInfoJson->at("faceMaskerModels").at("face_parser").at("path")};
+
     for (size_t i = 0; i < modelUrls.size(); ++i) {
         modelPaths.at(i) = FileSystem::resolveRelativePath(modelPaths.at(i));
         if (!FileSystem::isFile(modelPaths.at(i))) {

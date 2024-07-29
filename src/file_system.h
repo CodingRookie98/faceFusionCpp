@@ -17,6 +17,8 @@
 #include <unordered_set>
 #include <vector>
 #include <random>
+#include <thread_pool/thread_pool.h>
+#include "vision.h"
 
 namespace Ffc {
 
@@ -35,16 +37,22 @@ public:
     static bool hasImage(const std::unordered_set<std::string> &paths);
     static std::unordered_set<std::string> filterImagePaths(const std::unordered_set<std::string> &paths);
     static std::string normalizeOutputPath(const std::string &targetPath, const std::string &outputPath);
+    static std::vector<std::string> normalizeOutputPaths(const std::vector<std::string> &targetPaths, const std::string &outputPath);
     static bool directoryExists(const std::string &path);
     static void createDirectory(const std::string &path);
     static void removeDirectory(const std::string &path);
     static void removeFile(const std::string &path);
     static void copyFile(const std::string &source, const std::string &destination);
+    static void copyFiles(const std::vector<std::string> &sources, const std::vector<std::string> &destination);
     static void moveFile(const std::string &source, const std::string &destination);
+    static void moveFiles(const std::vector<std::string> &sources, const std::vector<std::string> &destination);
     static std::string getTempPath();
     static std::string getFileName(const std::string &filePath);
     static bool copyImageToTemp(const std::string &imagePath, const cv::Size &size = cv::Size(0, 0));
+    // use multi-threading to copy images to temp
+    static bool copyImagesToTemp(const std::vector<std::string> &imagePaths, const cv::Size &size = cv::Size(0, 0));
     static bool finalizeImage(const std::string &imagePath, const std::string &outputPath, const cv::Size &size = cv::Size(0, 0), const int &outputImageQuality = 100);
+    static bool finalizeImages(const std::vector<std::string> &imagePaths, const std::vector<std::string> &outputPaths, const cv::Size &size = cv::Size(0, 0), const int &outputImageQuality = 100);
     static std::string generateRandomString(const size_t &length);
 };
 

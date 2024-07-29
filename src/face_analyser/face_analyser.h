@@ -27,6 +27,7 @@
 #include "face_detector_scrfd.h"
 #include "face_detector_retina.h"
 #include "face_detector_yunet.h"
+#include "face_store.h"
 
 namespace Ffc {
 
@@ -75,7 +76,10 @@ private:
     std::unordered_map<Method, std::shared_ptr<OrtSession>> m_analyserMap;
     const std::shared_ptr<const Config> m_config;
     std::shared_ptr<Logger> m_logger = Logger::getInstance();
+    std::shared_ptr<FaceStore> m_faceStore = FaceStore::getInstance();
+    
     void createAnalyser(const Method &method);
+    
     std::shared_ptr<Typing::Faces> createFaces(const Typing::VisionFrame &visionFrame,
                                                const std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                                                                                 std::vector<Typing::FaceLandmark>,

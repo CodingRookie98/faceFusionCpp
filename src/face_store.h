@@ -14,6 +14,9 @@
 #include <string>
 #include <memory>
 #include <unordered_map>
+#include <openssl/sha.h>
+#include <iomanip>
+#include <shared_mutex>
 #include "typing.h"
 
 namespace Ffc {
@@ -32,12 +35,13 @@ public:
     std::unordered_map<std::string, Typing::Faces> getReferenceFaces() const;
     void clearReferenceFaces();
     void setStaticFaces(const Typing::VisionFrame &visionFrame, const Typing::Faces &faces);
-    Typing::Faces getStaticFaces(const Typing::VisionFrame &visionFrame) const;
+    Typing::Faces getStaticFaces(const Typing::VisionFrame &visionFrame);
     void clearStaticFaces();
 
 private:
     std::shared_ptr<std::unordered_map<std::string, Typing::Faces>> m_staticFaces;
     std::shared_ptr<std::unordered_map<std::string, Typing::Faces>> m_referenceFaces;
+    std::shared_mutex m_rwMutex;
 
     static std::string createFrameHash(const Typing::VisionFrame &visionFrame);
 };

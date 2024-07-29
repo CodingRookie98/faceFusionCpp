@@ -21,6 +21,8 @@ target_sources(${ProgramName} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/logger.h
         ${CMAKE_CURRENT_SOURCE_DIR}/face_store.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/face_store.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/progress_bar.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/progress_bar.h
 )
 
 set(CUDA_DIR "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2")

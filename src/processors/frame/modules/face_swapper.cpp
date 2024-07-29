@@ -50,47 +50,55 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
         throw std::runtime_error("[FaceSwapper] No target paths provided");
     }
 
-    //    using namespace indicators;
-    //    // Hide cursor
-    //    show_console_cursor(false);
-    //
-    //    indicators::ProgressBar bar{
-    //        option::BarWidth{50},
-    //        option::MaxProgress{static_cast<int64_t>(targetPaths.size())},
-    //        option::Start{" ["},
-    //        option::Fill{"█"},
-    //        option::Lead{"█"},
-    //        option::Remainder{"-"},
-    //        option::End{"]"},
-    //        option::PrefixText{"[FaceSwapper] Processing images 👀"},
-    //        option::ForegroundColor{Color::green},
-    //        option::ShowElapsedTime{true},
-    //        option::ShowRemainingTime{true},
-    //        option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}};
+    Typing::Faces referenceFaces;
+    if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
+        auto referenceFacesMap = m_faceStore->getReferenceFaces();
+        for (const auto &referenceFace : referenceFacesMap) {
+            for (const auto &face : referenceFace.second) {
+                referenceFaces.push_back(face);
+            }
+        }
+        if (referenceFaces.empty()) {
+            m_logger->error("[FaceSwapper] You must provide at least one reference face.");
+            std::exit(1);
+        }
+    }
 
     std::vector<cv::Mat> sourceFrames = Ffc::Vision::readStaticImages(sourcePaths);
     std::shared_ptr<Typing::Face> sourceFace = m_faceAnalyser->getAverageFace(sourceFrames);
-    Typing::Faces referenceFaces;
-    if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
-        if (m_config->m_referenceFacePath.empty()) {
-            m_logger->error("[FaceSwapper] Reference face path is empty");
-            throw std::runtime_error("[FaceSwapper] Reference face path is empty");
-        }
-        auto tempVisionFrame = Ffc::Vision::readStaticImage(m_config->m_referenceFacePath);
-        auto tempFace = m_faceAnalyser->getOneFace(tempVisionFrame, m_config->m_referenceFacePosition);
-        referenceFaces.emplace_back(std::move(*tempFace));
+    std::vector<std::future<std::shared_ptr<VisionFrame>>> results;
+    dp::thread_pool pool(m_config->m_executionThreadCount);
+    for (const auto &targetPath : targetPaths) {
+        auto targetFrame = Ffc::Vision::readStaticImage(targetPath);
+        results.emplace_back(pool.enqueue([=, this]() {
+            return processFrame(referenceFaces, *sourceFace, targetFrame);
+        }));
+    }
+    if (results.size() != outputPaths.size()) {
+        m_logger->error("[FaceSwapper] The number of results and output paths must be equal");
+        throw std::runtime_error("[FaceSwapper] The number of results and output paths must be equal");
     }
 
-    for (int i = 0; i < targetPaths.size(); ++i) {
-        auto targetFrame = Ffc::Vision::readStaticImage(targetPaths[i]);
-        auto resultFrame = processFrame(referenceFaces, *sourceFace, targetFrame);
+    const size_t numResults = results.size();
+    const size_t numTargetPaths = targetPaths.size();
+    show_console_cursor(false);
+    ProgressBar bar;
+    bar.setMaxProgress(100);
+    bar.setProgress(0);
+    bar.setPostfixText(std::format("{}/{}", 0, targetPaths.size()));
+    bar.setPrefixText("[FaceSwapper] Process images");
+#pragma omp parallel for
+    for (size_t i = 0; i < numResults; ++i) {
+        auto resultFrame = results[i].get();
         Ffc::Vision::writeImage(*resultFrame, outputPaths[i]);
-        m_logger->info(std::format("[FaceSwapper] Processed image {}/{}", i + 1, targetPaths.size()));
-        //        bar.tick();
+#pragma omp critical
+        {
+            bar.setPostfixText(std::format("{}/{}", (i + 1), numTargetPaths));
+            int progress = static_cast<int>(std::round(((i + 1) * 100.0f) / numTargetPaths));
+            bar.setProgress(progress);
+        }
     }
-
-    // Show cursor
-    //    show_console_cursor(true);
+    show_console_cursor(true);
 }
 
 std::shared_ptr<Typing::VisionFrame> FaceSwapper::processFrame(const Typing::Faces &referenceFaces,
@@ -121,7 +129,7 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::processFrame(const Typing::Fac
                 resultFrame = swapFace(sourceFace, similarFace, *resultFrame);
             }
         } else {
-            m_logger->error("[FaceSwapper] No similar faces found");
+            m_logger->warn("[FaceSwapper] No similar faces found, so skip this image process!");
         }
     }
 
@@ -170,8 +178,8 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
     // Create input tensors
     std::vector<Ort::Value> inputTensors;
     std::string modelType = m_modelsInfoJson->at("faceSwapperModels").at(m_modelName).at("type").get<std::string>();
+    std::shared_ptr<std::vector<float>> inputImageData;
     for (const auto &inputName : m_inputNames) {
-        static std::shared_ptr<std::vector<float>> inputImageData;
         if (std::string(inputName) == "source") {
             if (modelType == "blendswap" || modelType == "uniface") {
                 auto preparedSourceFrame = this->prepareSourceFrame(sourceFace);

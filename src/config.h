@@ -45,6 +45,9 @@ public:
     bool m_forceDownload;
     bool m_skipDownload;
     Logger::LogLevel m_logLevel;
+    
+    // execution
+    int m_executionThreadCount;
 
     // face analyser
     float m_faceDetectorScore;
@@ -90,6 +93,7 @@ private:
 
     void general();
     void misc();
+    void execution();
     void faceAnalyser();
     void faceSelector();
     void faceMasker();

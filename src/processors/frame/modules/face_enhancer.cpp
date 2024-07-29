@@ -63,7 +63,14 @@ FaceEnhancer::processFrame(const Typing::Faces &referenceFaces,
             resultFrame = enhanceFace(*targrtFace, *resultFrame);
         }
     } else if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
-        // Todo selectorMode Reference
+        Typing::Faces similarFaces = m_faceAnalyser->findSimilarFaces(referenceFaces, targetFrame, m_config->m_referenceFaceDistance);
+        if (!similarFaces.empty()) {
+            for (const auto &similarFace : similarFaces) {
+                resultFrame = enhanceFace(similarFace, *resultFrame);
+            }
+        } else {
+            m_logger->error("[FaceEnhancer] No similar faces found");
+        }
     }
 
     return resultFrame;
@@ -266,7 +273,7 @@ bool FaceEnhancer::preProcess(const std::unordered_set<std::string> &processMode
             }
         }
     }
-    
+
     if (m_faceEnhancerModel == nullptr || *m_faceEnhancerModel != m_config->m_faceEnhancerModel) {
         if (m_faceEnhancerModel != nullptr && *m_faceEnhancerModel != m_config->m_faceEnhancerModel) {
             postCheck();
@@ -305,7 +312,11 @@ void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePa
         m_logger->error("[FaceEnhancer] The number of target paths and output paths must be equal");
         throw std::runtime_error("[FaceEnhancer] The number of target paths and output paths must be equal");
     }
-
+    if (targetPaths.empty()) {
+        m_logger->error("[FaceEnhancer] No target paths provided!");
+        throw std::runtime_error("[FaceEnhancer] No target paths provided!");
+    }
+    
     std::vector<cv::Mat> sourceFrames = Ffc::Vision::readStaticImages(sourcePaths);
 
     for (int i = 0; i < targetPaths.size(); ++i) {

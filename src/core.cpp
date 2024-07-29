@@ -74,7 +74,7 @@ void Core::conditionalProcess() {
         }
         processor->preProcess({"output"});
     }
-//    conditionalAppendReferenceFaces();
+    conditionalAppendReferenceFaces();
     if (FileSystem::hasImage(m_config->m_targetPaths)) {
         processImages(startTime);
     }
@@ -98,7 +98,6 @@ std::shared_ptr<std::vector<std::shared_ptr<ProcessorBase>>> Core::getFrameProce
 }
 
 bool Core::preCheck() const {
-    // Todo do something
     return true;
 }
 
@@ -123,7 +122,13 @@ void Core::conditionalAppendReferenceFaces() {
         auto sourceFrame = Vision::readStaticImages(sourcePaths);
         auto sourceAverageFace = m_faceAnalyser->getAverageFace(sourceFrame);
         auto referenceFrame = Vision::readStaticImage(m_config->m_referenceFacePath);
-        auto referenceFace = m_faceAnalyser->getOneFace(referenceFrame);
+        auto referenceFace = m_faceAnalyser->getOneFace(referenceFrame, m_config->m_referenceFacePosition);
+
+        if (referenceFace == nullptr || referenceFace->isEmpty()) {
+            m_logger->error("[Core] No face found in the reference image.");
+            std::exit(1);
+        }
+
         m_faceStore->appendReferenceFace("origin", *referenceFace);
         if (!sourceAverageFace->isEmpty() && !referenceFace->isEmpty()) {
             for (const auto &processor : *getFrameProcessors()) {
@@ -145,28 +150,32 @@ void Core::processImages(const std::chrono::time_point<std::chrono::steady_clock
     targetImagePathsSet.clear();
 
     std::string tempPath = FileSystem::getTempPath();
-    for (size_t i = 0; i < targetImagePaths.size(); ++i) {
-        if (!FileSystem::copyImageToTemp(targetImagePaths[i], m_config->m_outputImageResolution)) {
-            m_logger->error(std::format("[Core] Copy target image to temp path failed. File: {}", targetImagePaths[i]));
-            continue;
-        }
-        auto tempTargetImagePath = tempPath + "/" + FileSystem::getFileName(targetImagePaths[i]);
-        targetImagePaths[i] = tempTargetImagePath;
-        normedOutputPaths.emplace_back(FileSystem::normalizeOutputPath(targetImagePaths[i], m_config->m_outputPath));
+
+    m_logger->info("[Core] Coping images to temp...");
+    if (!FileSystem::copyImagesToTemp(targetImagePaths, m_config->m_outputImageResolution)) {
+        m_logger->error("[Core] Copy target images to temp path failed.");
+        return;
     }
+
+    std::vector<std::string> tempTargetImagePaths;
+    for (const auto &targetImagePath : targetImagePaths) {
+        auto tempTargetImagePath = tempPath + "/" + FileSystem::getFileName(targetImagePath);
+        tempTargetImagePaths.emplace_back(tempTargetImagePath);
+    }
+    normedOutputPaths = FileSystem::normalizeOutputPaths(tempTargetImagePaths, m_config->m_outputPath);
+    targetImagePaths.clear();
 
     for (const auto &processor : *getFrameProcessors()) {
-        processor->processImages(m_config->m_sourcePaths, targetImagePaths, targetImagePaths);
+        processor->processImages(m_config->m_sourcePaths, tempTargetImagePaths, tempTargetImagePaths);
     }
 
-    for (size_t i = 0; i < targetImagePaths.size(); ++i) {
-        if (!FileSystem::finalizeImage(targetImagePaths[i], normedOutputPaths[i], m_config->m_outputImageResolution, m_config->m_outputImageQuality)) {
-            m_logger->warn("[Core] Finalize image skipped.");
-            FileSystem::moveFile(targetImagePaths[i], normedOutputPaths[i]);
-        } else {
-            FileSystem::removeFile(targetImagePaths[i]);
-        }
+    m_logger->info("[Core] Finalizing images...");
+    if (!FileSystem::finalizeImages(tempTargetImagePaths, tempTargetImagePaths, m_config->m_outputImageResolution, m_config->m_outputImageQuality)) {
+        m_logger->warn("[Core] Some images skipped finalization!");
     }
+    
+    m_logger->info("[Core] Moving processed images to output path...");
+    FileSystem::moveFiles(tempTargetImagePaths, normedOutputPaths);
 
     FileSystem::removeDirectory(FileSystem::getTempPath());
     m_logger->info(std::format("[Core] All images processed successfully. Output path: {}", FileSystem::resolveRelativePath(m_config->m_outputPath)));

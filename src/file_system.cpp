@@ -8,6 +8,7 @@
  ******************************************************************************
  */
 
+#include <future>
 #include "file_system.h"
 
 namespace Ffc {
@@ -123,6 +124,21 @@ std::string FileSystem::normalizeOutputPath(const std::string &targetPath, const
     return {};
 }
 
+std::vector<std::string> FileSystem::normalizeOutputPaths(const std::vector<std::string> &targetPaths, const std::string &outputPath) {
+    dp::thread_pool pool(std::thread::hardware_concurrency());
+    std::vector<std::future<std::string>> futures;
+    for (const auto &targetPath : targetPaths) {
+        futures.emplace_back(pool.enqueue([targetPath, outputPath] {
+            return normalizeOutputPath(targetPath, outputPath);
+        }));
+    }
+    std::vector<std::string> normedPaths;
+    for (auto &future : futures) {
+        normedPaths.push_back(future.get());
+    }
+    return normedPaths;
+}
+
 bool FileSystem::directoryExists(const std::string &path) {
     return std::filesystem::exists(path) && FileSystem::isDirectory(path);
 }
@@ -152,29 +168,55 @@ bool FileSystem::copyImageToTemp(const std::string &imagePath, const cv::Size &s
         return false;
     }
 
-    // 调整图片尺寸
-    cv::Mat resizedImage;
-    cv::Size outputSize;
-    if (size.width == 0 || size.height == 0) {
-        outputSize = inputImage.size();
-    }
-    cv::resize(inputImage, resizedImage, outputSize);
-
     // 获取临时文件路径
     std::filesystem::path tempFilePath = getTempPath() + "/" + getFileName(imagePath);
     tempFilePath.replace_extension(std::filesystem::path(imagePath).extension());
 
-    // 设置保存参数，默认无压缩
-    std::vector<int> compressionParams;
+    // 调整图片尺寸
+    cv::Mat resizedImage;
+    cv::Size outputSize = Vision::restrictResolution(inputImage.size(), size);
+    if (outputSize.width == 0 || outputSize.height == 0) {
+        outputSize = inputImage.size();
+    }
+
+    if (outputSize.width != inputImage.size().width || outputSize.height != inputImage.size().height) {
+        cv::resize(inputImage, resizedImage, outputSize);
+    } else {
+        if (tempFilePath.extension() != ".webp") {
+            copyFile(imagePath, tempFilePath.string());
+            return true;
+        }
+        resizedImage = inputImage;
+    }
+
     if (tempFilePath.extension() == ".webp") {
+        // 设置保存参数，默认无压缩
+        std::vector<int> compressionParams;
         compressionParams.push_back(cv::IMWRITE_WEBP_QUALITY);
         compressionParams.push_back(100); // 设置WebP压缩质量
+        if (!cv::imwrite(tempFilePath.string(), resizedImage, compressionParams)) {
+            return false;
+        }
     }
 
-    if (!cv::imwrite(tempFilePath.string(), resizedImage, compressionParams)) {
-        return false;
-    }
+    return true;
+}
 
+bool FileSystem::copyImagesToTemp(const std::vector<std::string> &imagePaths, const cv::Size &size) {
+    // use multi-thread
+    dp::thread_pool pool(std::thread::hardware_concurrency());
+
+    std::vector<std::future<bool>> futures;
+    for (const auto &imagePath : imagePaths) {
+        futures.emplace_back(pool.enqueue([imagePath, size]() {
+            return copyImageToTemp(imagePath, size);
+        }));
+    }
+    for (auto &future : futures) {
+        if (!future.get()) {
+            return false;
+        }
+    }
     return true;
 }
 
@@ -190,31 +232,78 @@ bool FileSystem::finalizeImage(const std::string &imagePath, const std::string &
     cv::Size outputSize;
     if (size.width == 0 || size.height == 0) {
         outputSize = inputImage.size();
+    } else {
+        outputSize = size;
     }
-    cv::resize(inputImage, resizedImage, outputSize);
+
+    if (outputSize.width != inputImage.size().width || outputSize.height != inputImage.size().height) {
+        cv::resize(inputImage, resizedImage, outputSize);
+    } else {
+        if (outputImageQuality == 100) {
+            copyFile(imagePath, outputPath);
+            return true;
+        }
+        resizedImage = inputImage;
+    }
 
     // 设置保存参数，默认无压缩
-    std::vector<int> compression_params;
-    if (std::filesystem::path(outputPath).extension() == ".webp") {
-        compression_params.push_back(cv::IMWRITE_WEBP_QUALITY);
-        compression_params.push_back(outputImageQuality);
-    } else if (std::filesystem::path(outputPath).extension() == ".jpg"
-               || std::filesystem::path(outputPath).extension() == ".jpeg") {
-        compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
-        compression_params.push_back(outputImageQuality);
-    } else if (std::filesystem::path(outputPath).extension() == ".png") {
-        compression_params.push_back(cv::IMWRITE_PNG_COMPRESSION);
-        compression_params.push_back(outputImageQuality);
+    std::vector<int> compressionParams;
+    std::string extension = std::filesystem::path(outputPath).extension().string();
+
+    if (extension == ".webp") {
+        compressionParams.push_back(cv::IMWRITE_WEBP_QUALITY);
+        compressionParams.push_back(std::clamp(outputImageQuality, 1, 100));
+    } else if (extension == ".jpg" || extension == ".jpeg") {
+        compressionParams.push_back(cv::IMWRITE_JPEG_QUALITY);
+        compressionParams.push_back(std::clamp(outputImageQuality, 0, 100));
+    } else if (extension == ".png") {
+        compressionParams.push_back(cv::IMWRITE_PNG_COMPRESSION);
+        compressionParams.push_back(std::clamp((outputImageQuality / 10), 0, 9));
     }
 
     // 保存调整后的图像
-    if (!cv::imwrite(outputPath, resizedImage, compression_params)) {
-        //        std::cerr << "Could not write the image to: " << outputPath << std::endl;
+    if (!cv::imwrite(outputPath, resizedImage, compressionParams)) {
         return false;
     }
 
     return true;
 }
+
+bool FileSystem::finalizeImages(const std::vector<std::string> &imagePaths, const std::vector<std::string> &outputPaths, const cv::Size &size, const int &outputImageQuality) {
+    if (imagePaths.size() != outputPaths.size()) {
+        throw std::invalid_argument("Input and output paths must have the same size");
+    }
+
+    dp::thread_pool pool(std::thread::hardware_concurrency());
+    std::vector<std::future<bool>> futures;
+    for (size_t i = 0; i < imagePaths.size(); ++i) {
+        futures.emplace_back(pool.enqueue([imagePath = imagePaths[i], outputPath = outputPaths[i], size, outputImageQuality]() {
+            //            return finalizeImage(imagePath, outputPath, size, outputImageQuality);
+            try {
+                return finalizeImage(imagePath, outputPath, size, outputImageQuality);
+            } catch (const std::exception &e) {
+                // 记录异常或处理异常
+                std::cerr << "Exception caught: " << e.what() << std::endl;
+                return false; // 返回错误状态
+            } catch (...) {
+                // 捕获所有其他异常
+                std::cerr << "Unknown exception caught" << std::endl;
+                return false; // 返回错误状态
+            }
+        }));
+    }
+
+    bool allSuccess = true;
+    for (auto &future : futures) {
+        bool success = future.get();
+        if (!success) {
+            allSuccess = false;
+        }
+    }
+
+    return allSuccess;
+}
+
 void FileSystem::removeDirectory(const std::string &path) {
     std::filesystem::remove_all(path);
 }
@@ -224,11 +313,47 @@ void FileSystem::removeFile(const std::string &path) {
 }
 
 void FileSystem::copyFile(const std::string &source, const std::string &destination) {
+    if(source == destination) return;
     std::filesystem::copy(source, destination, std::filesystem::copy_options::overwrite_existing);
+}
+
+void FileSystem::copyFiles(const std::vector<std::string> &sources, const std::vector<std::string> &destination) {
+    if (sources.size() != destination.size()) {
+        throw std::invalid_argument("Source and destination paths must have the same size");
+    }
+
+    dp::thread_pool pool(std::thread::hardware_concurrency());
+    std::vector<std::future<void>> futures;
+    for (size_t i = 0; i < sources.size(); ++i) {
+        futures.emplace_back(pool.enqueue([sources, destination, i]() {
+            std::filesystem::copy(sources[i], destination[i], std::filesystem::copy_options::overwrite_existing);
+        }));
+    }
+    for (auto &future : futures) {
+        future.get();
+    }
 }
 
 void FileSystem::moveFile(const std::string &source, const std::string &destination) {
     std::filesystem::rename(source, destination);
+}
+
+void FileSystem::moveFiles(const std::vector<std::string> &sources,
+                           const std::vector<std::string> &destination) {
+    if (sources.size() != destination.size()) {
+        throw std::invalid_argument("Source and destination paths must have the same size");
+    }
+
+    dp::thread_pool pool(std::thread::hardware_concurrency());
+    std::vector<std::future<void>> futures;
+    for (size_t i = 0; i < sources.size(); ++i) {
+        futures.emplace_back(pool.enqueue([sources, destination, i]() {
+            std::filesystem::rename(sources[i], destination[i]);
+        }));
+    }
+    for (auto &future : futures) {
+        future.get();
+    }
 }
 
 std::string FileSystem::generateRandomString(const size_t &length) {
