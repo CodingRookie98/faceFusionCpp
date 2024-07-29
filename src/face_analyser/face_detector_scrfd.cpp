@@ -19,12 +19,14 @@ FaceDetectorScrfd::FaceDetectorScrfd(const std::shared_ptr<Ort::Env> &env,
 
     if (!FileSystem::fileExists(modelPath)) {
         bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_scrfd").at("url"),
-                                                               "./models");
+                                                    "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);
         }
     }
     this->createSession(modelPath);
+    m_inputHeight = (int)m_inputNodeDims[0][2];
+    m_inputWidth = (int)m_inputNodeDims[0][3];
 }
 
 std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
@@ -32,10 +34,12 @@ std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                            std::vector<Typing::Score>>>
 FaceDetectorScrfd::detect(const Typing::VisionFrame &visionFrame,
                           const cv::Size &faceDetectorSize, const float &detectorScore) {
-    preProcess(visionFrame, faceDetectorSize);
+    std::vector<float> inputData;
+    float ratioHeight, ratioWidth;
+    std::tie(inputData, ratioHeight, ratioWidth) = preProcess(visionFrame, faceDetectorSize);
 
     std::vector<int64_t> inputImgShape = {1, 3, faceDetectorSize.height, faceDetectorSize.width};
-    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(m_memoryInfo, m_inputData.data(), m_inputData.size(), inputImgShape.data(), inputImgShape.size());
+    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(m_memoryInfo, inputData.data(), inputData.size(), inputImgShape.data(), inputImgShape.size());
     Ort::RunOptions runOptions;
     std::vector<Ort::Value> ortOutputs = m_session->Run(runOptions, m_inputNames.data(), &inputTensor, 1, m_outputNames.data(), m_outputNames.size());
 
@@ -47,9 +51,9 @@ FaceDetectorScrfd::detect(const Typing::VisionFrame &visionFrame,
         int featureStride = m_featureStrides[index];
         std::vector<int> keepIndices;
         int size = ortOutputs[index].GetTensorTypeAndShapeInfo().GetShape()[0];
-        float *pdataScore = ortOutputs[index].GetTensorMutableData<float>();
+        float *pdataScoreRaw = ortOutputs[index].GetTensorMutableData<float>();
         for (size_t j = 0; j < size; ++j) {
-            float tempScore = *(pdataScore + j);
+            float tempScore = *(pdataScoreRaw + j);
             if (tempScore >= detectorScore) {
                 keepIndices.emplace_back(j);
             }
@@ -100,16 +104,16 @@ FaceDetectorScrfd::detect(const Typing::VisionFrame &visionFrame,
 
             for (const auto &keepIndex : keepIndices) {
                 auto tempBbox = FaceHelper::distance2BoundingBox(anchors[keepIndex], boundingBoxesRaw[keepIndex]);
-                tempBbox->xmin *= m_ratioWidth;
-                tempBbox->ymin *= m_ratioHeight;
-                tempBbox->xmax *= m_ratioWidth;
-                tempBbox->ymax *= m_ratioHeight;
+                tempBbox->xmin *= ratioWidth;
+                tempBbox->ymin *= ratioHeight;
+                tempBbox->xmax *= ratioWidth;
+                tempBbox->ymax *= ratioHeight;
                 resultBoundingBoxes.emplace_back(*tempBbox);
 
                 auto tempLandmark = FaceHelper::distance2FaceLandmark5(anchors[keepIndex], faceLandmarksRaw[keepIndex]);
                 for (auto &point : *tempLandmark) {
-                    point.x *= m_ratioWidth;
-                    point.y *= m_ratioHeight;
+                    point.x *= ratioWidth;
+                    point.y *= ratioHeight;
                 }
                 resultFaceLandmarks.emplace_back(*tempLandmark);
 
@@ -123,15 +127,14 @@ FaceDetectorScrfd::detect(const Typing::VisionFrame &visionFrame,
                                        std::vector<Typing::Score>>>(resultBoundingBoxes, resultFaceLandmarks, resultScores);
 }
 
-void FaceDetectorScrfd::preProcess(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
+std::tuple<std::vector<float>, float, float>
+FaceDetectorScrfd::preProcess(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
     const int faceDetectorHeight = faceDetectorSize.height;
     const int faceDetectorWidth = faceDetectorSize.width;
-    m_inputHeight = (int)m_inputNodeDims[0][2];
-    m_inputWidth = (int)m_inputNodeDims[0][3];
 
     auto tempVisionFrame = Vision::resizeFrameResolution(visionFrame, cv::Size(faceDetectorWidth, faceDetectorHeight));
-    m_ratioHeight = (float)visionFrame.rows / (float)tempVisionFrame.rows;
-    m_ratioWidth = (float)visionFrame.cols / (float)tempVisionFrame.cols;
+    float ratioHeight = (float)visionFrame.rows / (float)tempVisionFrame.rows;
+    float ratioWidth = (float)visionFrame.cols / (float)tempVisionFrame.cols;
 
     // 创建一个指定尺寸的全零矩阵
     cv::Mat detectVisionFrame = cv::Mat::zeros(faceDetectorHeight, faceDetectorWidth, CV_32FC3);
@@ -145,10 +148,13 @@ void FaceDetectorScrfd::preProcess(const VisionFrame &visionFrame, const cv::Siz
     }
 
     const int imageArea = faceDetectorHeight * faceDetectorWidth;
-    m_inputData.resize(3 * imageArea);
+    std::vector<float> inputData;
+    inputData.resize(3 * imageArea);
     const size_t singleChnSize = imageArea * sizeof(float);
-    memcpy(m_inputData.data(), (float *)bgrChannels[0].data, singleChnSize);
-    memcpy(m_inputData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
-    memcpy(m_inputData.data() + imageArea * 2, (float *)bgrChannels[2].data, singleChnSize);
+    memcpy(inputData.data(), (float *)bgrChannels[0].data, singleChnSize);
+    memcpy(inputData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
+    memcpy(inputData.data() + imageArea * 2, (float *)bgrChannels[2].data, singleChnSize);
+
+    return std::make_tuple(inputData, ratioHeight, ratioWidth);
 }
 } // namespace Ffc

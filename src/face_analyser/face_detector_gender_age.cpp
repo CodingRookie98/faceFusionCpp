@@ -18,12 +18,14 @@ FaceDetectorGenderAge::FaceDetectorGenderAge(const std::shared_ptr<Ort::Env> &en
 
     if (!FileSystem::fileExists(modelPath)) {
         bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceAnalyserModels").at("gender_age").at("url"),
-                                                               "./models");
+                                                    "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);
         }
     }
     this->createSession(modelPath);
+    m_inputHeight = m_inputNodeDims[0][2];
+    m_inputWidth = m_inputNodeDims[0][3];
 }
 
 std::shared_ptr<std::tuple<int, int>> FaceDetectorGenderAge::detect(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
@@ -37,15 +39,12 @@ std::shared_ptr<std::tuple<int, int>> FaceDetectorGenderAge::detect(const Vision
     auto cropVisionAndAffineMat = FaceHelper::warpFaceByTranslation(visionFrame, translation,
                                                                     scale, cv::Size(96, 96));
 
-    int inputHeight = m_inputNodeDims[0][2];
-    int inputWidth = m_inputNodeDims[0][3];
-
     std::vector<cv::Mat> bgrChannels(3);
     split(std::get<0>(*cropVisionAndAffineMat), bgrChannels);
     for (int c = 0; c < 3; c++) {
         bgrChannels[c].convertTo(bgrChannels[c], CV_32FC1);
     }
-    const int imageArea = inputHeight * inputWidth;
+    const int imageArea = m_inputHeight * m_inputWidth;
     std::vector<float> inputImageData(3 * imageArea);
     inputImageData.resize(3 * imageArea);
     size_t singleChnSize = imageArea * sizeof(float);

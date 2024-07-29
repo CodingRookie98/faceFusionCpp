@@ -51,6 +51,9 @@ Typing::VisionFrame Vision::resizeFrameResolution(const Typing::VisionFrame &vis
 }
 
 bool Vision::writeImage(const cv::Mat &image, const std::string &imagePath) {
+    if (image.empty()) {
+        return false;
+    }
     // You may encounter long path problems in Windows
     if (cv::imwrite(imagePath, image)) {
         return true;

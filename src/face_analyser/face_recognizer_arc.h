@@ -37,9 +37,8 @@ public:
     ArcType getArcType() const;
 
 private:
-    void preProcess(const Typing::VisionFrame &visionFrame,
+    std::vector<float> preProcess(const Typing::VisionFrame &visionFrame,
                     const Typing::FaceLandmark &faceLandmark5_68);
-    std::vector<float> m_inputData;
     int m_inputWidth{};
     int m_inputHeight{};
     const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;

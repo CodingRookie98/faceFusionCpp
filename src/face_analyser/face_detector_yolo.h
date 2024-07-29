@@ -36,12 +36,9 @@ public:
            const float &scoreThreshold = 0.5);
 
 private:
-    void preProcess(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize);
-    std::vector<float> m_inputData;
+    std::tuple<std::vector<float>, float, float> preProcess(const Typing::VisionFrame &visionFrame, const cv::Size &faceDetectorSize);
     int m_inputHeight{};
     int m_inputWidth{};
-    float m_ratioHeight;
-    float m_ratioWidth;
     const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
 };
 

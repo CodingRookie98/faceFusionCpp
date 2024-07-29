@@ -28,7 +28,7 @@ FaceRecognizerArc::FaceRecognizerArc(const std::shared_ptr<Ort::Env> &env,
     // 如果 modelPath不存在则下载
     if (!FileSystem::fileExists(modelPath)) {
         bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceAnalyserModels").at("face_recognizer_arcface_uniface").at("url"),
-                                                               "./models");
+                                                    "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);
         }
@@ -43,11 +43,11 @@ FaceRecognizerArc::ArcType FaceRecognizerArc::getArcType() const {
 std::shared_ptr<std::tuple<Typing::Embedding, Typing::Embedding>>
 FaceRecognizerArc::recognize(const Typing::VisionFrame &visionFrame,
                              const Typing::FaceLandmark &faceLandmark5) {
-    this->preProcess(visionFrame, faceLandmark5);
+    std::vector<float> inputData = this->preProcess(visionFrame, faceLandmark5);
     std::vector<int64_t> inputImgShape = {1, 3, this->m_inputHeight, this->m_inputWidth};
-    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(this->m_memoryInfo, this->m_inputData.data(),
-                                                             this->m_inputData.size(),
-                                                             inputImgShape.data(), inputImgShape.size());
+    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(this->m_memoryInfo, inputData.data(),
+                                                             inputData.size(), inputImgShape.data(),
+                                                             inputImgShape.size());
 
     Ort::RunOptions runOptions;
     std::vector<Ort::Value> ortOutputs = this->m_session->Run(runOptions, this->m_inputNames.data(), &inputTensor, 1, this->m_outputNames.data(), m_outputNames.size());
@@ -68,8 +68,8 @@ FaceRecognizerArc::recognize(const Typing::VisionFrame &visionFrame,
                                                                               std::move(normedEmbedding));
 }
 
-void FaceRecognizerArc::preProcess(const Typing::VisionFrame &visionFrame,
-                                   const Typing::FaceLandmark &faceLandmark5_68) {
+std::vector<float> FaceRecognizerArc::preProcess(const Typing::VisionFrame &visionFrame,
+                                                 const Typing::FaceLandmark &faceLandmark5_68) {
     m_inputWidth = (int)m_inputNodeDims[0][2];
     m_inputHeight = (int)m_inputNodeDims[0][3];
 
@@ -91,10 +91,12 @@ void FaceRecognizerArc::preProcess(const Typing::VisionFrame &visionFrame,
     }
 
     const int imageArea = this->m_inputHeight * this->m_inputWidth;
-    this->m_inputData.resize(3 * imageArea);
+    std::vector<float> inputData;
+    inputData.resize(3 * imageArea);
     size_t singleChnSize = imageArea * sizeof(float);
-    memcpy(this->m_inputData.data(), (float *)bgrChannels[2].data, singleChnSize);
-    memcpy(this->m_inputData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
-    memcpy(this->m_inputData.data() + imageArea * 2, (float *)bgrChannels[0].data, singleChnSize);
+    memcpy(inputData.data(), (float *)bgrChannels[2].data, singleChnSize);
+    memcpy(inputData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
+    memcpy(inputData.data() + imageArea * 2, (float *)bgrChannels[0].data, singleChnSize);
+    return inputData;
 }
 } // namespace Ffc

@@ -29,8 +29,7 @@ public:
     std::shared_ptr<Typing::FaceLandmark> detect(const Typing::FaceLandmark &faceLandmark5);
 
 private:
-    void preProcess(const Typing::FaceLandmark &faceLandmark5);
-    std::vector<float> m_inputTensorData;
+    std::vector<float> preProcess(const Typing::FaceLandmark &faceLandmark5);
     int m_inputHeight{};
     int m_inputWidth{};
     cv::Mat m_affineMatrix;

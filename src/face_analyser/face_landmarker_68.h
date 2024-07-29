@@ -31,11 +31,10 @@ public:
     detect(const Typing::VisionFrame &visionFrame, const Typing::BoundingBox &boundingBox);
 
 private:
-    std::vector<float> m_inputData;
     int m_inputHeight{};
     int m_inputWidth{};
     cv::Mat m_invAffineMatrix;
-    void preProcess(const Typing::VisionFrame &visionFrame, const BoundingBox &boundingBox);
+    std::vector<float> preProcess(const Typing::VisionFrame &visionFrame, const BoundingBox &boundingBox);
     const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
 };
 

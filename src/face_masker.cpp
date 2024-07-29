@@ -58,11 +58,11 @@ std::shared_ptr<cv::Mat> FaceMasker::createOcclusionMask(const Typing::VisionFra
     std::shared_ptr<OrtSession> session = nullptr;
     if (!m_maskerMap->contains(Method::Occlusion)) {
         session = std::make_shared<OrtSession>(m_env);
+        session->createSession(modelPath);
         m_maskerMap->emplace(Method::Occlusion, session);
     } else {
         session = m_maskerMap->at(Method::Occlusion);
     }
-    session->createSession(modelPath);
     const int inputHeight = session->m_inputNodeDims[0][1];
     const int inputWidth = session->m_inputNodeDims[0][2];
 

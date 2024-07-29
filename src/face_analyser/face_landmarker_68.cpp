@@ -18,21 +18,22 @@ FaceLandmarker68::FaceLandmarker68(const std::shared_ptr<Ort::Env> &env,
     // 如果 modelPath不存在则下载
     if (!FileSystem::fileExists(modelPath)) {
         bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68").at("url"),
-                                                               "./models");
+                                                    "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);
         }
     }
 
     this->createSession(modelPath);
+    m_inputHeight = m_inputNodeDims[0][2];
+    m_inputWidth = m_inputNodeDims[0][3];
 }
 
 std::shared_ptr<std::tuple<Typing::FaceLandmark, Typing::Score>>
 FaceLandmarker68::detect(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
-    this->preProcess(visionFrame, boundingBox);
-
+    std::vector<float> inputData = this->preProcess(visionFrame, boundingBox);
     std::vector<int64_t> inputImgShape = {1, 3, this->m_inputHeight, this->m_inputWidth};
-    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(this->m_memoryInfo, this->m_inputData.data(), this->m_inputData.size(), inputImgShape.data(), inputImgShape.size());
+    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(this->m_memoryInfo, inputData.data(), inputData.size(), inputImgShape.data(), inputImgShape.size());
 
     Ort::RunOptions runOptions;
     std::vector<Ort::Value> ortOutputs = this->m_session->Run(runOptions, this->m_inputNames.data(), &inputTensor, 1, this->m_outputNames.data(), this->m_outputNames.size());
@@ -59,10 +60,7 @@ FaceLandmarker68::detect(const VisionFrame &visionFrame, const BoundingBox &boun
                                        Typing::Score>>(std::make_tuple(faceLandmark68, meanScore));
 }
 
-void FaceLandmarker68::preProcess(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
-    m_inputHeight = m_inputNodeDims[0][2];
-    m_inputWidth = m_inputNodeDims[0][3];
-
+std::vector<float> FaceLandmarker68::preProcess(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
     float subMax = std::max(boundingBox.xmax - boundingBox.xmin, boundingBox.ymax - boundingBox.ymin);
     const float scale = 195.f / subMax;
     const std::vector<float> translation = {(256.f - (boundingBox.xmax + boundingBox.xmin) * scale) * 0.5f, (256.f - (boundingBox.ymax + boundingBox.ymin) * scale) * 0.5f};
@@ -80,10 +78,13 @@ void FaceLandmarker68::preProcess(const VisionFrame &visionFrame, const Bounding
     }
 
     const int imageArea = this->m_inputHeight * this->m_inputWidth;
-    this->m_inputData.resize(3 * imageArea);
+    std::vector<float> inputData;
+    inputData.resize(3 * imageArea);
     const size_t singleChnSize = imageArea * sizeof(float);
-    memcpy(this->m_inputData.data(), (float *)bgrChannels[0].data, singleChnSize);
-    memcpy(this->m_inputData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
-    memcpy(this->m_inputData.data() + imageArea * 2, (float *)bgrChannels[2].data, singleChnSize);
+    memcpy(inputData.data(), (float *)bgrChannels[0].data, singleChnSize);
+    memcpy(inputData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
+    memcpy(inputData.data() + imageArea * 2, (float *)bgrChannels[2].data, singleChnSize);
+
+    return inputData;
 }
 } // namespace Ffc

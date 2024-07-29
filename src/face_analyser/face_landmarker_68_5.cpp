@@ -24,11 +24,11 @@ FaceLandmarker68_5::FaceLandmarker68_5(const std::shared_ptr<Ort::Env> &env,
         }
     }
     this->createSession(modelPath);
-}
-
-void FaceLandmarker68_5::preProcess(const FaceLandmark &faceLandmark5) {
     m_inputHeight = m_inputNodeDims[0][1];
     m_inputWidth = m_inputNodeDims[0][2];
+}
+
+std::vector<float> FaceLandmarker68_5::preProcess(const FaceLandmark &faceLandmark5) {
     Ffc::Typing::FaceLandmark landmark5 = faceLandmark5;
 
     std::vector<float> fVec = m_modelsInfoJson->at("faceHelper").at("warpTemplate").at("ffhq_512").get<std::vector<float>>();
@@ -40,19 +40,21 @@ void FaceLandmarker68_5::preProcess(const FaceLandmark &faceLandmark5) {
     m_affineMatrix = Ffc::FaceHelper::estimateMatrixByFaceLandmark5(landmark5, warpTemplate, cv::Size(1, 1));
     cv::transform(landmark5, landmark5, m_affineMatrix);
 
+    std::vector<float> tensorData;
     for (const auto &point : landmark5) {
-        m_inputTensorData.emplace_back(point.x);
-        m_inputTensorData.emplace_back(point.y);
+        tensorData.emplace_back(point.x);
+        tensorData.emplace_back(point.y);
     }
+    return tensorData;
 }
 
 std::shared_ptr<Typing::FaceLandmark> FaceLandmarker68_5::detect(const FaceLandmark &faceLandmark5) {
-    this->preProcess(faceLandmark5);
+   std::vector<float> inputTensorData = this->preProcess(faceLandmark5);
 
     std::vector<int64_t> inputShape{1, this->m_inputHeight, this->m_inputWidth};
     Ort::Value inputTensor = Ort::Value::CreateTensor<float>(this->m_memoryInfo,
-                                                             m_inputTensorData.data(),
-                                                             m_inputTensorData.size(), inputShape.data(),
+                                                             inputTensorData.data(),
+                                                             inputTensorData.size(), inputShape.data(),
                                                              inputShape.size());
     Ort::RunOptions runOptions;
     std::vector<Ort::Value> outputTensor = this->m_session->Run(runOptions, this->m_inputNames.data(),

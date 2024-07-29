@@ -34,6 +34,8 @@ public:
 
 private:
     const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
+    int m_inputHeight;
+    int m_inputWidth;
 };
 
 } // namespace Ffc

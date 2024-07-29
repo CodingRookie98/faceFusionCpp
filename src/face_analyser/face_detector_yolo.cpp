@@ -12,15 +12,14 @@
 
 namespace Ffc {
 using namespace Typing;
-void FaceDetectorYolo::preProcess(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
+std::tuple<std::vector<float>, float, float>
+FaceDetectorYolo::preProcess(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
     const int faceDetectorHeight = faceDetectorSize.height;
     const int faceDetectorWidth = faceDetectorSize.width;
-    m_inputHeight = (int)m_inputNodeDims[0][2];
-    m_inputWidth = (int)m_inputNodeDims[0][3];
 
     cv::Mat tempVisionFrame = Vision::resizeFrameResolution(visionFrame, faceDetectorSize);
-    m_ratioHeight = (float)visionFrame.rows / (float)tempVisionFrame.rows;
-    m_ratioWidth = (float)visionFrame.cols / (float)tempVisionFrame.cols;
+    float ratioHeight = (float)visionFrame.rows / (float)tempVisionFrame.rows;
+    float ratioWidth = (float)visionFrame.cols / (float)tempVisionFrame.cols;
 
     // 创建一个指定尺寸的全零矩阵
     cv::Mat detectVisionFrame = cv::Mat::zeros(faceDetectorHeight, faceDetectorWidth, CV_32FC3);
@@ -34,11 +33,13 @@ void FaceDetectorYolo::preProcess(const VisionFrame &visionFrame, const cv::Size
     }
 
     const int imageArea = faceDetectorWidth * faceDetectorHeight;
-    this->m_inputData.resize(3 * imageArea);
+    std::vector<float> inputData;
+    inputData.resize(3 * imageArea);
     const size_t singleChnSize = imageArea * sizeof(float);
-    memcpy(this->m_inputData.data(), (float *)bgrChannels[0].data, singleChnSize);
-    memcpy(this->m_inputData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
-    memcpy(this->m_inputData.data() + imageArea * 2, (float *)bgrChannels[2].data, singleChnSize);
+    memcpy(inputData.data(), (float *)bgrChannels[0].data, singleChnSize);
+    memcpy(inputData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
+    memcpy(inputData.data() + imageArea * 2, (float *)bgrChannels[2].data, singleChnSize);
+    return std::make_tuple(inputData, ratioHeight, ratioWidth);
 }
 
 std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
@@ -46,10 +47,12 @@ std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                            std::vector<Typing::Score>>>
 FaceDetectorYolo::detect(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize,
                          const float &scoreThreshold) {
-    this->preProcess(visionFrame, faceDetectorSize);
+    std::vector<float> inputData;
+    float ratioHeight, ratioWidth;
+    std::tie(inputData, ratioHeight, ratioWidth) = this->preProcess(visionFrame, faceDetectorSize);
 
     std::vector<int64_t> inputImgShape = {1, 3, faceDetectorSize.height, faceDetectorSize.width};
-    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(m_memoryInfo, m_inputData.data(), m_inputData.size(), inputImgShape.data(), inputImgShape.size());
+    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(m_memoryInfo, inputData.data(), inputData.size(), inputImgShape.data(), inputImgShape.size());
     Ort::RunOptions runOptions;
     std::vector<Ort::Value> ortOutputs = m_session->Run(runOptions, m_inputNames.data(), &inputTensor, 1, m_outputNames.data(), m_outputNames.size());
 
@@ -63,10 +66,10 @@ FaceDetectorYolo::detect(const VisionFrame &visionFrame, const cv::Size &faceDet
     for (int i = 0; i < numBox; i++) {
         const float score = pdata[4 * numBox + i];
         if (score > scoreThreshold) {
-            float xmin = (pdata[i] - 0.5 * pdata[2 * numBox + i]) * m_ratioWidth;           ///(cx,cy,w,h)转到(x,y,w,h)并还原到原图
-            float ymin = (pdata[numBox + i] - 0.5 * pdata[3 * numBox + i]) * m_ratioHeight; ///(cx,cy,w,h)转到(x,y,w,h)并还原到原图
-            float xmax = (pdata[i] + 0.5 * pdata[2 * numBox + i]) * m_ratioWidth;           ///(cx,cy,w,h)转到(x,y,w,h)并还原到原图
-            float ymax = (pdata[numBox + i] + 0.5 * pdata[3 * numBox + i]) * m_ratioHeight; ///(cx,cy,w,h)转到(x,y,w,h)并还原到原图
+            float xmin = (pdata[i] - 0.5 * pdata[2 * numBox + i]) * ratioWidth;           ///(cx,cy,w,h)转到(x,y,w,h)并还原到原图
+            float ymin = (pdata[numBox + i] - 0.5 * pdata[3 * numBox + i]) * ratioHeight; ///(cx,cy,w,h)转到(x,y,w,h)并还原到原图
+            float xmax = (pdata[i] + 0.5 * pdata[2 * numBox + i]) * ratioWidth;           ///(cx,cy,w,h)转到(x,y,w,h)并还原到原图
+            float ymax = (pdata[numBox + i] + 0.5 * pdata[3 * numBox + i]) * ratioHeight; ///(cx,cy,w,h)转到(x,y,w,h)并还原到原图
 
             // 坐标的越界检查保护
             xmin = std::max(0.0f, std::min(xmin, static_cast<float>(visionFrame.cols)));
@@ -81,15 +84,13 @@ FaceDetectorYolo::detect(const VisionFrame &visionFrame, const cv::Size &faceDet
             Ffc::Typing::FaceLandmark faceLandmark;
             for (int j = 5; j < 20; j += 3) {
                 cv::Point2f point2F;
-                point2F.x = pdata[j * numBox + i] * m_ratioWidth;
-                point2F.y = pdata[(j + 1) * numBox + i] * m_ratioHeight;
+                point2F.x = pdata[j * numBox + i] * ratioWidth;
+                point2F.y = pdata[(j + 1) * numBox + i] * ratioHeight;
                 faceLandmark.emplace_back(point2F);
             }
             landmarkRaw.emplace_back(faceLandmark);
         }
     }
-
-    m_inputData.clear();
 
     auto result = std::make_shared<std::tuple<std::vector<Typing::BoundingBox>,
                                               std::vector<Typing::FaceLandmark>,
@@ -104,12 +105,14 @@ FaceDetectorYolo::FaceDetectorYolo(const std::shared_ptr<Ort::Env> &env,
 
     if (!FileSystem::fileExists(modelPath)) {
         bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yoloface").at("url"),
-                                                               "./models");
+                                                    "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);
         }
     }
     this->createSession(modelPath);
+    m_inputHeight = (int)m_inputNodeDims[0][2];
+    m_inputWidth = (int)m_inputNodeDims[0][3];
 }
 
 } // namespace Ffc

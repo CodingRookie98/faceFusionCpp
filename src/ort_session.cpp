@@ -14,7 +14,7 @@ namespace Ffc {
 OrtSession::OrtSession(const std::shared_ptr<Ort::Env> &env) {
     m_env = env;
     m_sessionOptions = Ort::SessionOptions();
-    m_sessionOptions.SetGraphOptimizationLevel(ORT_ENABLE_BASIC);
+    m_sessionOptions.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
     m_cudaProviderOptions = std::make_shared<OrtCUDAProviderOptions>();
     // CUDA 加速
     m_cudaProviderOptions->device_id = 0;

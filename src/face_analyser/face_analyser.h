@@ -65,7 +65,7 @@ public:
                      const Typing::Face &referenceFace,
                      const float &faceDistance);
     
-    float calculateFaceDistance(const Typing::Face &face1,
+    static float calculateFaceDistance(const Typing::Face &face1,
                                 const Typing::Face &face2);
 
     bool preCheck();
@@ -74,11 +74,12 @@ private:
     std::shared_ptr<Ort::Env> m_env;
     const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
     std::unordered_map<Method, std::shared_ptr<OrtSession>> m_analyserMap;
+    std::mutex m_mutex;
     const std::shared_ptr<const Config> m_config;
     std::shared_ptr<Logger> m_logger = Logger::getInstance();
     std::shared_ptr<FaceStore> m_faceStore = FaceStore::getInstance();
     
-    void createAnalyser(const Method &method);
+    std::shared_ptr<OrtSession> getAnalyser(const Method &method);
     
     std::shared_ptr<Typing::Faces> createFaces(const Typing::VisionFrame &visionFrame,
                                                const std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,

@@ -25,12 +25,28 @@ void FaceSwapper::processImage(const std::unordered_set<std::string> &sourcePath
                                const std::string &targetPath,
                                const std::string &outputPath) {
     Typing::Faces referenceFaces;
+    if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
+        auto referenceFacesMap = m_faceStore->getReferenceFaces();
+        for (const auto &referenceFace : referenceFacesMap) {
+            for (const auto &face : referenceFace.second) {
+                referenceFaces.push_back(face);
+            }
+        }
+        if (referenceFaces.empty()) {
+            m_logger->error("[FaceSwapper] You must provide at least one reference face.");
+            std::exit(1);
+        }
+    }
 
     std::vector<cv::Mat> sourceFrames = Ffc::Vision::readStaticImages(sourcePaths);
     std::shared_ptr<Typing::Face> sourceFace = m_faceAnalyser->getAverageFace(sourceFrames);
     auto targetFrame = Ffc::Vision::readStaticImage(targetPath);
 
     auto resultFrame = processFrame(referenceFaces, *sourceFace, targetFrame);
+    if (resultFrame == nullptr) {
+        m_logger->error("[FaceSwapper] Failed to process image");
+        return;
+    }
     Ffc::Vision::writeImage(*resultFrame, outputPath);
 }
 
@@ -81,17 +97,17 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
 
     const size_t numResults = results.size();
     const size_t numTargetPaths = targetPaths.size();
-    show_console_cursor(false);
     ProgressBar bar;
+    show_console_cursor(false);
     bar.setMaxProgress(100);
     bar.setProgress(0);
     bar.setPostfixText(std::format("{}/{}", 0, targetPaths.size()));
     bar.setPrefixText("[FaceSwapper] Process images");
-#pragma omp parallel for
+//#pragma omp parallel for
     for (size_t i = 0; i < numResults; ++i) {
         auto resultFrame = results[i].get();
         Ffc::Vision::writeImage(*resultFrame, outputPaths[i]);
-#pragma omp critical
+//#pragma omp critical
         {
             bar.setPostfixText(std::format("{}/{}", (i + 1), numTargetPaths));
             int progress = static_cast<int>(std::round(((i + 1) * 100.0f) / numTargetPaths));
@@ -316,7 +332,7 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::prepareSourceFrame(const Face 
 }
 
 bool FaceSwapper::preCheck() {
-    m_logger->info("[FaceSwapper] preCheck");
+    m_logger->info("[FaceSwapper] pre check");
     switch (m_config->m_faceSwapperModel) {
     case Typing::FSM_Inswapper_128:
         m_modelName = "inswapper_128";
@@ -383,7 +399,7 @@ bool FaceSwapper::postCheck() {
 }
 
 bool FaceSwapper::preProcess(const std::unordered_set<std::string> &processMode) {
-    m_logger->info("[FaceSwapper] preProcess");
+    m_logger->info("[FaceSwapper] pre process");
     std::unordered_set<std::string> sourcePaths = FileSystem::filterImagePaths(m_config->m_sourcePaths);
     std::unordered_set<std::string> targetPaths = FileSystem::filterImagePaths(m_config->m_targetPaths);
     if (!FileSystem::hasImage(sourcePaths)) {

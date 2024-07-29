@@ -13,6 +13,8 @@
 
 #include <nlohmann/json.hpp>
 #include <onnxruntime_cxx_api.h>
+#include <thread_pool/thread_pool.h>
+#include "config.h"
 #include "typing.h"
 #include "vision.h"
 #include "face_analyser/face_analyser.h"
@@ -20,6 +22,8 @@
 #include "ort_session.h"
 #include "processor_base.h"
 #include "logger.h"
+#include "face_store.h"
+#include "progress_bar.h"
 
 namespace Ffc {
 class FaceEnhancer : public OrtSession, public ProcessorBase {
@@ -43,7 +47,6 @@ public:
     void processImages(const std::unordered_set<std::string> &sourcePaths,
                        const std::vector<std::string> &targetPaths,
                        const std::vector<std::string> &outputPaths) override;
-    void setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnalyser);
 
 private:
     void init();
@@ -58,7 +61,6 @@ private:
 
     int m_inputHeight;
     int m_inputWidth;
-    std::vector<float> m_inputImageData;
     std::shared_ptr<FaceAnalyser> m_faceAnalyser;
     std::shared_ptr<FaceMasker> m_faceMasker;
     const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
@@ -68,6 +70,9 @@ private:
     cv::Size m_size;
     std::shared_ptr<Typing::EnumFaceEnhancerModel> m_faceEnhancerModel;
     std::shared_ptr<Logger> m_logger = Logger::getInstance();
+    std::shared_ptr<FaceStore> m_faceStore = FaceStore::getInstance();
+    
+    std::vector<std::shared_ptr<Typing::VisionFrame>> m_debugFrames;
 };
 } // namespace Ffc
 #endif // FACEFUSIONCPP_SRC_PROCESSORS_FRAME_MODULES_FACE_ENHANCER_H_

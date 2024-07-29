@@ -19,9 +19,10 @@ FaceAnalyser::FaceAnalyser(const std::shared_ptr<Ort::Env> &env,
     this->m_env = env;
 }
 
-void FaceAnalyser::createAnalyser(const FaceAnalyser::Method &method) {
+std::shared_ptr<OrtSession> FaceAnalyser::getAnalyser(const FaceAnalyser::Method &method) {
+    std::lock_guard<std::mutex> lock(m_mutex);
     if (m_analyserMap.contains(method)) {
-        return;
+        return m_analyserMap.at(method);
     }
 
     std::shared_ptr<OrtSession> analyserPtr = nullptr;
@@ -59,10 +60,11 @@ void FaceAnalyser::createAnalyser(const FaceAnalyser::Method &method) {
     }
 
     if (analyserPtr == nullptr) {
-        throw std::runtime_error("FaceAnalyser::createAnalyser: method not supported or std::make_shared failed");
+        throw std::runtime_error("FaceAnalyser::getAnalyser: method not supported or std::make_shared failed");
     } else {
         m_analyserMap.insert(std::make_pair(method, std::move(analyserPtr)));
     }
+    return m_analyserMap.at(method);
 }
 
 std::shared_ptr<Typing::Face>
@@ -178,7 +180,7 @@ std::shared_ptr<Typing::Faces> FaceAnalyser::getManyFaces(const Typing::VisionFr
                                                                                std::vector<Typing::Score>>>(
                                                        std::make_tuple(resultBoundingBoxes, resultLandmarks5, resultScores)));
         }
-        
+
         if (!resultFaces->empty()) {
             m_faceStore->setStaticFaces(visionFrame, *resultFaces);
         }
@@ -193,11 +195,7 @@ std::shared_ptr<Typing::Faces> FaceAnalyser::getManyFaces(const Typing::VisionFr
 
 std::shared_ptr<Typing::FaceLandmark>
 FaceAnalyser::expandFaceLandmark68From5(const FaceLandmark &inputLandmark5) {
-    if (!m_analyserMap.contains(DetectLandmark68_5)) {
-        createAnalyser(DetectLandmark68_5);
-    }
-
-    auto detectorLandmark68_5 = std::dynamic_pointer_cast<FaceLandmarker68_5>(m_analyserMap.at(DetectLandmark68_5));
+    auto detectorLandmark68_5 = std::dynamic_pointer_cast<FaceLandmarker68_5>(getAnalyser(DetectLandmark68_5));
     return detectorLandmark68_5->detect(inputLandmark5);
 }
 
@@ -205,11 +203,7 @@ std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                            std::vector<Typing::FaceLandmark>,
                            std::vector<Typing::Score>>>
 FaceAnalyser::detectWithYoloFace(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
-    if (!m_analyserMap.contains(DetectWithYoloFace)) {
-        createAnalyser(DetectWithYoloFace);
-    }
-
-    auto detectorYolo = std::dynamic_pointer_cast<FaceDetectorYolo>(m_analyserMap.at(DetectWithYoloFace));
+    auto detectorYolo = std::dynamic_pointer_cast<FaceDetectorYolo>(getAnalyser(DetectWithYoloFace));
     return detectorYolo->detect(visionFrame, faceDetectorSize, m_config->m_faceDetectorScore);
 }
 
@@ -272,42 +266,33 @@ FaceAnalyser::createFaces(const Typing::VisionFrame &visionFrame,
 std::shared_ptr<std::tuple<Typing::FaceLandmark,
                            Typing::Score>>
 FaceAnalyser::detectLandmark68(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
-    if (!m_analyserMap.contains(DetectLandmark68)) {
-        createAnalyser(DetectLandmark68);
-    }
-
-    auto detectorLandmark68 = std::dynamic_pointer_cast<FaceLandmarker68>(m_analyserMap.at(DetectLandmark68));
+    auto detectorLandmark68 = std::dynamic_pointer_cast<FaceLandmarker68>(getAnalyser(DetectLandmark68));
     return detectorLandmark68->detect(visionFrame, boundingBox);
 }
 
 std::shared_ptr<std::tuple<Typing::Embedding, Typing::Embedding>> FaceAnalyser::calculateEmbedding(const VisionFrame &visionFrame, const FaceLandmark &faceLandmark5_68) {
     std::shared_ptr<FaceRecognizerArc> recognizerArc = nullptr;
     if (!m_analyserMap.contains(RecognizeWithArcFace)) {
-        createAnalyser(RecognizeWithArcFace);
+        recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(getAnalyser(RecognizeWithArcFace));
     } else {
         recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(m_analyserMap.at(RecognizeWithArcFace));
         if (m_config->m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Simswap_256
             || m_config->m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Simswap_512_unofficial) {
             if (recognizerArc->getArcType() != FaceRecognizerArc::ArcType::Simswap) {
-                createAnalyser(RecognizeWithArcFace);
+                recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(getAnalyser(RecognizeWithArcFace));
             }
         } else {
             if (recognizerArc->getArcType() != FaceRecognizerArc::ArcType::W600k_R50) {
-                createAnalyser(RecognizeWithArcFace);
+                recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(getAnalyser(RecognizeWithArcFace));
             }
         }
     }
-    recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(m_analyserMap.at(RecognizeWithArcFace));
     return recognizerArc->recognize(visionFrame, faceLandmark5_68);
 }
 
 std::shared_ptr<std::tuple<int, int>>
 FaceAnalyser::detectGenderAge(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
-    if (!m_analyserMap.contains(DetectorGenderAge)) {
-        createAnalyser(DetectorGenderAge);
-    }
-
-    auto detectorGenderAge = std::dynamic_pointer_cast<FaceDetectorGenderAge>(m_analyserMap.at(DetectorGenderAge));
+    auto detectorGenderAge = std::dynamic_pointer_cast<FaceDetectorGenderAge>(getAnalyser(DetectorGenderAge));
     return detectorGenderAge->detect(visionFrame, boundingBox);
 }
 
@@ -315,10 +300,7 @@ std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                            std::vector<Typing::FaceLandmark>,
                            std::vector<Typing::Score>>>
 FaceAnalyser::detectWithScrfd(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
-    if (!m_analyserMap.contains(DetectWithScrfd)) {
-        createAnalyser(DetectWithScrfd);
-    }
-    auto detectorScrfd = std::dynamic_pointer_cast<FaceDetectorScrfd>(m_analyserMap.at(DetectWithScrfd));
+    auto detectorScrfd = std::dynamic_pointer_cast<FaceDetectorScrfd>(getAnalyser(DetectWithScrfd));
     return detectorScrfd->detect(visionFrame, faceDetectorSize, m_config->m_faceDetectorScore);
 }
 
@@ -326,10 +308,7 @@ std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                            std::vector<Typing::FaceLandmark>,
                            std::vector<Typing::Score>>>
 FaceAnalyser::detectWithRetina(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
-    if (!m_analyserMap.contains(DetectWithRetina)) {
-        createAnalyser(DetectWithRetina);
-    }
-    auto detectorRetina = std::dynamic_pointer_cast<FaceDetectorRetina>(m_analyserMap.at(DetectWithRetina));
+    auto detectorRetina = std::dynamic_pointer_cast<FaceDetectorRetina>(getAnalyser(DetectWithRetina));
     return detectorRetina->detect(visionFrame, faceDetectorSize, m_config->m_faceDetectorScore);
 }
 
@@ -337,10 +316,7 @@ std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                            std::vector<Typing::FaceLandmark>,
                            std::vector<Typing::Score>>>
 FaceAnalyser::detectWithYunet(const VisionFrame &visionFrame, const cv::Size &faceDetectorSize) {
-    if (!m_analyserMap.contains(DetectWithYunet)) {
-        createAnalyser(DetectWithYunet);
-    }
-    auto detectorYunet = std::dynamic_pointer_cast<FaceDetectorYunet>(m_analyserMap.at(DetectWithYunet));
+    auto detectorYunet = std::dynamic_pointer_cast<FaceDetectorYunet>(getAnalyser(DetectWithYunet));
     return detectorYunet->detect(visionFrame, faceDetectorSize, m_config->m_faceDetectorScore);
 }
 

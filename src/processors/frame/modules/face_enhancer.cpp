@@ -58,9 +58,9 @@ FaceEnhancer::processFrame(const Typing::Faces &referenceFaces,
             }
         }
     } else if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_One) {
-        auto targrtFace = m_faceAnalyser->getOneFace(targetFrame);
-        if (targrtFace != nullptr) {
-            resultFrame = enhanceFace(*targrtFace, *resultFrame);
+        auto targetFace = m_faceAnalyser->getOneFace(targetFrame);
+        if (targetFace != nullptr) {
+            resultFrame = enhanceFace(*targetFace, *resultFrame);
         }
     } else if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
         Typing::Faces similarFaces = m_faceAnalyser->findSimilarFaces(referenceFaces, targetFrame, m_config->m_referenceFaceDistance);
@@ -76,10 +76,6 @@ FaceEnhancer::processFrame(const Typing::Faces &referenceFaces,
     return resultFrame;
 }
 
-void FaceEnhancer::setFaceAnalyser(const std::shared_ptr<FaceAnalyser> &faceAnalyser) {
-    m_faceAnalyser = faceAnalyser;
-}
-
 std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::enhanceFace(const Face &targetFace, const VisionFrame &tempVisionFrame) {
     auto result = applyEnhance(targetFace, tempVisionFrame);
@@ -90,19 +86,20 @@ std::shared_ptr<Typing::VisionFrame>
 FaceEnhancer::blendFrame(const VisionFrame &targetFrame,
                          const VisionFrame &pasteVisionFrame) {
     const float faceEnhancerBlend = 1 - ((float)m_config->m_faceEnhancerBlend / 100.f);
-    cv::Mat dstimg;
-    cv::addWeighted(targetFrame, faceEnhancerBlend, pasteVisionFrame, 1 - faceEnhancerBlend, 0, dstimg);
-    return std::make_shared<Typing::VisionFrame>(std::move(dstimg));
+    cv::Mat dstImage;
+    cv::addWeighted(targetFrame, faceEnhancerBlend, pasteVisionFrame, 1 - faceEnhancerBlend, 0, dstImage);
+    return std::make_shared<Typing::VisionFrame>(std::move(dstImage));
 }
 
-std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targetFace, const VisionFrame &tempVisionFrame) {
+std::shared_ptr<Typing::VisionFrame>
+FaceEnhancer::applyEnhance(const Face &targetFace, const VisionFrame &tempVisionFrame) {
     auto cropVisionAndAffineMat = FaceHelper::warpFaceByFaceLandmarks5(tempVisionFrame,
                                                                        targetFace.faceLandMark5_68,
                                                                        m_warpTemplate, m_size);
     auto cropBoxMask = FaceMasker::createStaticBoxMask(std::get<0>(*cropVisionAndAffineMat).size(),
                                                        m_config->m_faceMaskBlur, m_config->m_faceMaskPadding);
     auto cropOcclusionMask = m_faceMasker->createOcclusionMask(std::get<0>(*cropVisionAndAffineMat));
-    std::vector<cv::Mat> cropMaskVec{*cropBoxMask, *cropOcclusionMask};
+    std::vector<cv::Mat> cropMasks{*cropBoxMask, *cropOcclusionMask};
 
     std::vector<cv::Mat> bgrChannels(3);
     split(std::get<0>(*cropVisionAndAffineMat), bgrChannels);
@@ -111,20 +108,20 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
     }
 
     const int imageArea = m_inputHeight * m_inputWidth;
-    m_inputImageData.clear();
-    m_inputImageData.resize(3 * imageArea);
+    std::vector<float> inputImageData;
+    inputImageData.resize(3 * imageArea);
     size_t singleChnSize = imageArea * sizeof(float);
-    memcpy(m_inputImageData.data(), (float *)bgrChannels[2].data, singleChnSize); /// rgb顺序
-    memcpy(m_inputImageData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
-    memcpy(m_inputImageData.data() + imageArea * 2, (float *)bgrChannels[0].data, singleChnSize);
+    memcpy(inputImageData.data(), (float *)bgrChannels[2].data, singleChnSize); /// rgb顺序
+    memcpy(inputImageData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
+    memcpy(inputImageData.data() + imageArea * 2, (float *)bgrChannels[0].data, singleChnSize);
 
     std::vector<Ort::Value> inputTensors;
     for (const auto &name : m_inputNames) {
         std::string strName(name);
         if (strName == "input") {
             std::vector<int64_t> inputImgShape = {1, 3, m_inputHeight, m_inputWidth};
-            Ort::Value inputTensor = Ort::Value::CreateTensor<float>(m_memoryInfo, m_inputImageData.data(),
-                                                                     m_inputImageData.size(),
+            Ort::Value inputTensor = Ort::Value::CreateTensor<float>(m_memoryInfo, inputImageData.data(),
+                                                                     inputImageData.size(),
                                                                      inputImgShape.data(),
                                                                      inputImgShape.size());
             inputTensors.push_back(std::move(inputTensor));
@@ -138,45 +135,57 @@ std::shared_ptr<Typing::VisionFrame> FaceEnhancer::applyEnhance(const Face &targ
             inputTensors.push_back(std::move(weightsTensor));
         }
     }
+    try {
+        Ort::RunOptions runOptions;
+        std::vector<Ort::Value> outputTensor = m_session->Run(runOptions, m_inputNames.data(),
+                                                              inputTensors.data(), inputTensors.size(),
+                                                              m_outputNames.data(), m_outputNames.size());
 
-    Ort::RunOptions runOptions;
-    std::vector<Ort::Value> outputTensor = m_session->Run(runOptions, m_inputNames.data(),
-                                                          inputTensors.data(), inputTensors.size(),
-                                                          m_outputNames.data(), m_outputNames.size());
+        float *pdata = outputTensor[0].GetTensorMutableData<float>();
+        std::vector<int64_t> outsShape = outputTensor[0].GetTensorTypeAndShapeInfo().GetShape();
+        const int outputHeight = outsShape[2];
+        const int outputWidth = outsShape[3];
 
-    float *pdata = outputTensor[0].GetTensorMutableData<float>();
-    std::vector<int64_t> outsShape = outputTensor[0].GetTensorTypeAndShapeInfo().GetShape();
-    const int outputHeight = outsShape[2];
-    const int outputWidth = outsShape[3];
+        const int channelStep = outputHeight * outputWidth;
+        std::vector<cv::Mat> channelMats(3);
+        // Create matrices for each channel and scale/clamp values
+        channelMats[2] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata);                   // R
+        channelMats[1] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata + channelStep);     // G
+        channelMats[0] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata + 2 * channelStep); // B
+        for (auto &mat : channelMats) {
+            mat.setTo(-1, mat < -1);
+            mat.setTo(1, mat > 1);
+            mat = (mat + 1) * 0.5;
+            mat *= 255.f;
+            mat.setTo(0, mat < 0);
+            mat.setTo(255, mat > 255);
+        }
+        // Merge the channels into a single matrix
+        cv::Mat resultMat;
+        cv::merge(channelMats, resultMat);
+        resultMat.convertTo(resultMat, CV_8UC3);
 
-    const int channelStep = outputHeight * outputWidth;
-    std::vector<cv::Mat> channelMats(3);
-    // Create matrices for each channel and scale/clamp values
-    channelMats[2] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata);                   // R
-    channelMats[1] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata + channelStep);     // G
-    channelMats[0] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata + 2 * channelStep); // B
-    for (auto &mat : channelMats) {
-        mat.setTo(-1, mat < -1);
-        mat.setTo(1, mat > 1);
-        mat = (mat + 1) * 0.5;
-        mat *= 255.f;
-        mat.setTo(0, mat < 0);
-        mat.setTo(255, mat > 255);
+        if (m_config->m_faceMaskTypeSet.contains(Typing::EnumFaceMaskerType::FM_Region)) {
+            auto regionMask = m_faceMasker->createRegionMask(resultMat, m_config->m_faceMaskRegionsSet);
+            cropMasks.push_back(std::move(*regionMask));
+        }
+        for (auto &cropMask : cropMasks) {
+            cropMask.setTo(0, cropMask < 0);
+            cropMask.setTo(1, cropMask > 1);
+        }
+        auto bestMask = m_faceMasker->getBestMask(cropMasks);
+
+        auto dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, *bestMask,
+                                              std::get<1>(*cropVisionAndAffineMat));
+        dstImage = blendFrame(tempVisionFrame, *dstImage);
+
+        m_debugFrames.emplace_back(dstImage);
+
+        return dstImage;
+    } catch (const Ort::Exception &e) {
+        m_logger->error("[FaceEnhancer] Ort::Exception: " + std::string(e.what()));
+        return nullptr;
     }
-    // Merge the channels into a single matrix
-    cv::Mat resultMat;
-    cv::merge(channelMats, resultMat);
-    resultMat.convertTo(resultMat, CV_8UC3);
-
-    auto bestMask = m_faceMasker->getBestMask(cropMaskVec);
-    bestMask->setTo(0, *bestMask < 0); // 可有可无，只是保持与python版本的一致性
-    bestMask->setTo(1, *bestMask > 1);
-
-    auto dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, *bestMask,
-                                          std::get<1>(*cropVisionAndAffineMat));
-    dstImage = blendFrame(tempVisionFrame, *dstImage);
-
-    return dstImage;
 }
 
 bool FaceEnhancer::postCheck() {
@@ -252,7 +261,7 @@ bool FaceEnhancer::preCheck() {
 }
 
 bool FaceEnhancer::preProcess(const std::unordered_set<std::string> &processMode) {
-    m_logger->info("[FaceEnhancer] preProcess");
+    m_logger->info("[FaceEnhancer] pre process");
     std::unordered_set<std::string> targetPaths = FileSystem::filterImagePaths(m_config->m_targetPaths);
 
     if (processMode.contains("output") || processMode.contains("preview")) {
@@ -295,19 +304,35 @@ Typing::VisionFrame FaceEnhancer::getReferenceFrame(const Face &sourceFace, cons
 void FaceEnhancer::processImage(const std::unordered_set<std::string> &sourcePaths,
                                 const std::string &targetPath,
                                 const std::string &outputPath) {
-    Typing::Faces referenceFaces{};
-    Typing::VisionFrame targetFrame = Vision::readStaticImage(targetPath);
-    auto result = processFrame(referenceFaces, targetFrame);
-    if (result) {
-        Vision::writeImage(*result, outputPath);
+    Typing::Faces referenceFaces;
+    if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
+        auto referenceFacesMap = m_faceStore->getReferenceFaces();
+        for (const auto &referenceFace : referenceFacesMap) {
+            for (const auto &face : referenceFace.second) {
+                referenceFaces.push_back(face);
+            }
+        }
+        if (referenceFaces.empty()) {
+            m_logger->error("[FaceEnhancer] You must provide at least one reference face.");
+            std::exit(1);
+        }
     }
+
+    Typing::VisionFrame targetFrame = Vision::readStaticImage(targetPath);
+
+    m_logger->info("[FaceEnhancer] Processing image: " + targetPath);
+    auto result = processFrame(referenceFaces, targetFrame);
+    if (result == nullptr) {
+        m_logger->error("[FaceEnhancer] Process image failed!");
+        return;
+    }
+    Vision::writeImage(*result, outputPath);
+    m_logger->info("[FaceEnhancer] Image processed successfully!");
 }
 
 void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePaths,
                                  const std::vector<std::string> &targetPaths,
                                  const std::vector<std::string> &outputPaths) {
-    Typing::Faces referenceFaces;
-
     if (targetPaths.size() != outputPaths.size()) {
         m_logger->error("[FaceEnhancer] The number of target paths and output paths must be equal");
         throw std::runtime_error("[FaceEnhancer] The number of target paths and output paths must be equal");
@@ -316,13 +341,54 @@ void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePa
         m_logger->error("[FaceEnhancer] No target paths provided!");
         throw std::runtime_error("[FaceEnhancer] No target paths provided!");
     }
-    
-    std::vector<cv::Mat> sourceFrames = Ffc::Vision::readStaticImages(sourcePaths);
 
-    for (int i = 0; i < targetPaths.size(); ++i) {
-        auto targetFrame = Ffc::Vision::readStaticImage(targetPaths[i]);
-        auto resultFrame = processFrame(referenceFaces, targetFrame);
-        Ffc::Vision::writeImage(*resultFrame, outputPaths[i]);
+    Typing::Faces referenceFaces;
+    if (m_config->m_faceSelectorMode == Typing::EnumFaceSelectorMode::FS_Reference) {
+        auto referenceFacesMap = m_faceStore->getReferenceFaces();
+        for (const auto &referenceFace : referenceFacesMap) {
+            for (const auto &face : referenceFace.second) {
+                referenceFaces.push_back(face);
+            }
+        }
+        if (referenceFaces.empty()) {
+            m_logger->error("[FaceEnhancer] You must provide at least one reference face.");
+            std::exit(1);
+        }
     }
+
+    std::vector<std::future<std::shared_ptr<VisionFrame>>> results;
+    dp::thread_pool pool(m_config->m_executionThreadCount);
+    for (const auto &targetPath : targetPaths) {
+        auto targetFrame = Ffc::Vision::readStaticImage(targetPath);
+        results.emplace_back(pool.enqueue([=, this]() {
+            return processFrame(referenceFaces, targetFrame);
+        }));
+    }
+    if (results.size() != outputPaths.size()) {
+        m_logger->error("[FaceEnhancer] The number of results and output paths must be equal");
+        throw std::runtime_error("[FaceEnhancer] The number of results and output paths must be equal");
+    }
+
+
+    const size_t numResults = results.size();
+    const size_t numTargetPaths = targetPaths.size();
+    show_console_cursor(false);
+    ProgressBar bar;
+    bar.setMaxProgress(100);
+    bar.setProgress(0);
+    bar.setPostfixText(std::format("{}/{}", 0, targetPaths.size()));
+    bar.setPrefixText("[FaceEnhancer] Process images");
+    // #pragma omp parallel for
+    for (size_t i = 0; i < numResults; ++i) {
+        auto resultFrame = results[i].get();
+        Ffc::Vision::writeImage(*resultFrame, outputPaths[i]);
+        // #pragma omp critical
+        {
+            bar.setPostfixText(std::format("{}/{}", (i + 1), numTargetPaths));
+            int progress = static_cast<int>(std::round(((i + 1) * 100.0f) / numTargetPaths));
+            bar.setProgress(progress);
+        }
+    }
+    show_console_cursor(true);
 }
 } // namespace Ffc
