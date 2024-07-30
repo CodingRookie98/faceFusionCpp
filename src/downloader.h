@@ -17,11 +17,10 @@
 
 #include <string>
 #include <iostream>
-#include <thread>
-#include <mutex>
 #include <curl/curl.h>
 #include "file_system.h"
 #include "logger.h"
+#include "progress_bar.h"
 
 namespace Ffc {
 
@@ -38,6 +37,9 @@ private:
     static size_t writeData(void *ptr, size_t size, size_t nmemb, std::ofstream *stream);
     // 进度回调函数
     static int progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
+  
+    static std::string humanReadableSize(long size);
+    static size_t headerCallback(char *buffer, size_t size, size_t nitems, void *userdata);
 };
 
 } // namespace Ffc
