@@ -32,7 +32,7 @@ public:
 
     static std::shared_ptr<FaceStore> getInstance();
     void appendReferenceFace(const std::string &name, const Typing::Face &face);
-    std::unordered_map<std::string, Typing::Faces> getReferenceFaces() const;
+    std::unordered_map<std::string, Typing::Faces> getReferenceFaces();
     void clearReferenceFaces();
     void setStaticFaces(const Typing::VisionFrame &visionFrame, const Typing::Faces &faces);
     Typing::Faces getStaticFaces(const Typing::VisionFrame &visionFrame);
@@ -41,7 +41,8 @@ public:
 private:
     std::shared_ptr<std::unordered_map<std::string, Typing::Faces>> m_staticFaces;
     std::shared_ptr<std::unordered_map<std::string, Typing::Faces>> m_referenceFaces;
-    std::shared_mutex m_rwMutex;
+    std::shared_mutex m_rwMutexForStatic;
+    std::shared_mutex m_rwMutexForReference;
 
     static std::string createFrameHash(const Typing::VisionFrame &visionFrame);
 };

@@ -45,6 +45,7 @@ private:
     std::shared_ptr<std::vector<std::shared_ptr<ProcessorBase>>> m_frameProcessors;
     std::shared_ptr<FaceStore> m_faceStore = FaceStore::getInstance();
 
+    void createFrameProcessors();
     std::shared_ptr<std::vector<std::shared_ptr<ProcessorBase>>> getFrameProcessors();
     void forceDownload();
     void conditionalAppendReferenceFaces();

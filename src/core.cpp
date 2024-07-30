@@ -80,7 +80,7 @@ void Core::conditionalProcess() {
     }
 }
 
-std::shared_ptr<std::vector<std::shared_ptr<ProcessorBase>>> Core::getFrameProcessors() {
+void Core::createFrameProcessors() {
     if (m_frameProcessors == nullptr) {
         m_frameProcessors = std::make_shared<std::vector<std::shared_ptr<ProcessorBase>>>();
         for (auto &processor : m_config->m_frameProcessors) {
@@ -93,6 +93,12 @@ std::shared_ptr<std::vector<std::shared_ptr<ProcessorBase>>> Core::getFrameProce
                 break;
             }
         }
+    }
+}
+
+std::shared_ptr<std::vector<std::shared_ptr<ProcessorBase>>> Core::getFrameProcessors() {
+    if (m_frameProcessors == nullptr) {
+        createFrameProcessors();
     }
     return m_frameProcessors;
 }
@@ -165,15 +171,19 @@ void Core::processImages(const std::chrono::time_point<std::chrono::steady_clock
     normedOutputPaths = FileSystem::normalizeOutputPaths(tempTargetImagePaths, m_config->m_outputPath);
     targetImagePaths.clear();
 
-    for (const auto &processor : *getFrameProcessors()) {
-        processor->processImages(m_config->m_sourcePaths, tempTargetImagePaths, tempTargetImagePaths);
+    auto processors = getFrameProcessors();
+    for (auto processor = processors->begin(); processor != processors->end();) {
+        (*processor)->processImages(m_config->m_sourcePaths, tempTargetImagePaths, tempTargetImagePaths);
+        processor = processors->erase(processor);
+        m_faceStore->clearStaticFaces();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // Don't remove this line, it will cause a bug
     }
 
     m_logger->info("[Core] Finalizing images...");
     if (!FileSystem::finalizeImages(tempTargetImagePaths, tempTargetImagePaths, m_config->m_outputImageResolution, m_config->m_outputImageQuality)) {
         m_logger->warn("[Core] Some images skipped finalization!");
     }
-    
+
     m_logger->info("[Core] Moving processed images to output path...");
     FileSystem::moveFiles(tempTargetImagePaths, normedOutputPaths);
 

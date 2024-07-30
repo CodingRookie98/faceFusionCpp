@@ -24,24 +24,33 @@ FaceStore::FaceStore() {
 }
 
 void FaceStore::appendReferenceFace(const std::string &name, const Typing::Face &face) {
+    if (name.empty() || face.isEmpty()) {
+        return;
+    }
+    std::unique_lock<std::shared_mutex> lock(m_rwMutexForReference);
     (*m_referenceFaces)[name].push_back(face);
 }
 
-std::unordered_map<std::string, Typing::Faces> FaceStore::getReferenceFaces() const {
+std::unordered_map<std::string, Typing::Faces> FaceStore::getReferenceFaces() {
+    std::shared_lock<std::shared_mutex> lock(m_rwMutexForReference);
     return *m_referenceFaces;
 }
 
 void FaceStore::clearReferenceFaces() {
+    std::unique_lock<std::shared_mutex> lock(m_rwMutexForReference);
     m_referenceFaces->clear();
 }
 
 void FaceStore::setStaticFaces(const Typing::VisionFrame &visionFrame, const Typing::Faces &faces) {
-    std::unique_lock<std::shared_mutex> lock(m_rwMutex);
+    if (faces.empty()) {
+        return;
+    }
+    std::unique_lock<std::shared_mutex> lock(m_rwMutexForStatic);
     (*m_staticFaces)[createFrameHash(visionFrame)] = faces;
 }
 
 Typing::Faces FaceStore::getStaticFaces(const Typing::VisionFrame &visionFrame) {
-    std::shared_lock<std::shared_mutex> lock(m_rwMutex);
+    std::shared_lock<std::shared_mutex> lock(m_rwMutexForStatic);
     auto it = m_staticFaces->find(createFrameHash(visionFrame));
     if (it != m_staticFaces->end()) {
         return it->second;
@@ -50,6 +59,7 @@ Typing::Faces FaceStore::getStaticFaces(const Typing::VisionFrame &visionFrame) 
 }
 
 void FaceStore::clearStaticFaces() {
+    std::unique_lock<std::shared_mutex> lock(m_rwMutexForStatic);
     m_staticFaces->clear();
 }
 

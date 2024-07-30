@@ -358,7 +358,8 @@ void FileSystem::moveFiles(const std::vector<std::string> &sources,
 
 std::string FileSystem::generateRandomString(const size_t &length) {
     const std::string characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    std::default_random_engine generator(static_cast<unsigned long>(std::time(0)));
+    std::random_device rd;
+    std::default_random_engine generator(rd());
     std::uniform_int_distribution<size_t> distribution(0, characters.size() - 1);
 
     std::string randomString;

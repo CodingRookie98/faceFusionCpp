@@ -26,7 +26,7 @@
 #include "progress_bar.h"
 
 namespace Ffc {
-class FaceEnhancer : public OrtSession, public ProcessorBase {
+class FaceEnhancer : private OrtSession, public ProcessorBase {
 public:
     FaceEnhancer(const std::shared_ptr<Ort::Env> &env,
                  const std::shared_ptr<FaceAnalyser> &faceAnalyser,
@@ -71,8 +71,6 @@ private:
     std::shared_ptr<Typing::EnumFaceEnhancerModel> m_faceEnhancerModel;
     std::shared_ptr<Logger> m_logger = Logger::getInstance();
     std::shared_ptr<FaceStore> m_faceStore = FaceStore::getInstance();
-    
-    std::vector<std::shared_ptr<Typing::VisionFrame>> m_debugFrames;
 };
 } // namespace Ffc
 #endif // FACEFUSIONCPP_SRC_PROCESSORS_FRAME_MODULES_FACE_ENHANCER_H_

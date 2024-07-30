@@ -31,7 +31,7 @@
 
 namespace Ffc {
 
-class FaceSwapper : public OrtSession, public ProcessorBase {
+class FaceSwapper : private OrtSession, public ProcessorBase {
 public:
     explicit FaceSwapper(const std::shared_ptr<Ort::Env> &env,
                          const std::shared_ptr<FaceAnalyser> &faceAnalyser,

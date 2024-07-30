@@ -34,7 +34,6 @@ public:
     std::vector<Ort::AllocatedStringPtr> m_outputNamesPtrs;
     std::vector<std::vector<int64_t>> m_inputNodeDims;  // >=1 outputs
     std::vector<std::vector<int64_t>> m_outputNodeDims; // >=1 outputs
-//    Ort::MemoryInfo m_memoryInfo = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPU);
     Ort::MemoryInfo m_memoryInfo = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
 private:
 };

@@ -135,57 +135,50 @@ FaceEnhancer::applyEnhance(const Face &targetFace, const VisionFrame &tempVision
             inputTensors.push_back(std::move(weightsTensor));
         }
     }
-    try {
-        Ort::RunOptions runOptions;
-        std::vector<Ort::Value> outputTensor = m_session->Run(runOptions, m_inputNames.data(),
-                                                              inputTensors.data(), inputTensors.size(),
-                                                              m_outputNames.data(), m_outputNames.size());
+    Ort::RunOptions runOptions;
+    std::vector<Ort::Value> outputTensor = m_session->Run(runOptions, m_inputNames.data(),
+                                                          inputTensors.data(), inputTensors.size(),
+                                                          m_outputNames.data(), m_outputNames.size());
 
-        float *pdata = outputTensor[0].GetTensorMutableData<float>();
-        std::vector<int64_t> outsShape = outputTensor[0].GetTensorTypeAndShapeInfo().GetShape();
-        const int outputHeight = outsShape[2];
-        const int outputWidth = outsShape[3];
+    float *pdata = outputTensor[0].GetTensorMutableData<float>();
+    std::vector<int64_t> outsShape = outputTensor[0].GetTensorTypeAndShapeInfo().GetShape();
+    const int outputHeight = outsShape[2];
+    const int outputWidth = outsShape[3];
 
-        const int channelStep = outputHeight * outputWidth;
-        std::vector<cv::Mat> channelMats(3);
-        // Create matrices for each channel and scale/clamp values
-        channelMats[2] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata);                   // R
-        channelMats[1] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata + channelStep);     // G
-        channelMats[0] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata + 2 * channelStep); // B
-        for (auto &mat : channelMats) {
-            mat.setTo(-1, mat < -1);
-            mat.setTo(1, mat > 1);
-            mat = (mat + 1) * 0.5;
-            mat *= 255.f;
-            mat.setTo(0, mat < 0);
-            mat.setTo(255, mat > 255);
-        }
-        // Merge the channels into a single matrix
-        cv::Mat resultMat;
-        cv::merge(channelMats, resultMat);
-        resultMat.convertTo(resultMat, CV_8UC3);
-
-        if (m_config->m_faceMaskTypeSet.contains(Typing::EnumFaceMaskerType::FM_Region)) {
-            auto regionMask = m_faceMasker->createRegionMask(resultMat, m_config->m_faceMaskRegionsSet);
-            cropMasks.push_back(std::move(*regionMask));
-        }
-        for (auto &cropMask : cropMasks) {
-            cropMask.setTo(0, cropMask < 0);
-            cropMask.setTo(1, cropMask > 1);
-        }
-        auto bestMask = m_faceMasker->getBestMask(cropMasks);
-
-        auto dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, *bestMask,
-                                              std::get<1>(*cropVisionAndAffineMat));
-        dstImage = blendFrame(tempVisionFrame, *dstImage);
-
-        m_debugFrames.emplace_back(dstImage);
-
-        return dstImage;
-    } catch (const Ort::Exception &e) {
-        m_logger->error("[FaceEnhancer] Ort::Exception: " + std::string(e.what()));
-        return nullptr;
+    const int channelStep = outputHeight * outputWidth;
+    std::vector<cv::Mat> channelMats(3);
+    // Create matrices for each channel and scale/clamp values
+    channelMats[2] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata);                   // R
+    channelMats[1] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata + channelStep);     // G
+    channelMats[0] = cv::Mat(outputHeight, outputWidth, CV_32FC1, pdata + 2 * channelStep); // B
+    for (auto &mat : channelMats) {
+        mat.setTo(-1, mat < -1);
+        mat.setTo(1, mat > 1);
+        mat = (mat + 1) * 0.5;
+        mat *= 255.f;
+        mat.setTo(0, mat < 0);
+        mat.setTo(255, mat > 255);
     }
+    // Merge the channels into a single matrix
+    cv::Mat resultMat;
+    cv::merge(channelMats, resultMat);
+    resultMat.convertTo(resultMat, CV_8UC3);
+
+    if (m_config->m_faceMaskTypeSet.contains(Typing::EnumFaceMaskerType::FM_Region)) {
+        auto regionMask = m_faceMasker->createRegionMask(resultMat, m_config->m_faceMaskRegionsSet);
+        cropMasks.push_back(std::move(*regionMask));
+    }
+    for (auto &cropMask : cropMasks) {
+        cropMask.setTo(0, cropMask < 0);
+        cropMask.setTo(1, cropMask > 1);
+    }
+    auto bestMask = m_faceMasker->getBestMask(cropMasks);
+
+    auto dstImage = FaceHelper::pasteBack(tempVisionFrame, resultMat, *bestMask,
+                                          std::get<1>(*cropVisionAndAffineMat));
+    dstImage = blendFrame(tempVisionFrame, *dstImage);
+
+    return dstImage;
 }
 
 bool FaceEnhancer::postCheck() {
@@ -368,7 +361,6 @@ void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePa
         m_logger->error("[FaceEnhancer] The number of results and output paths must be equal");
         throw std::runtime_error("[FaceEnhancer] The number of results and output paths must be equal");
     }
-
 
     const size_t numResults = results.size();
     const size_t numTargetPaths = targetPaths.size();
