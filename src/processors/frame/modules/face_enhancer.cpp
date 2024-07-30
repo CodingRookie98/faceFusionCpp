@@ -349,38 +349,62 @@ void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePa
         }
     }
 
-    std::vector<std::future<std::shared_ptr<VisionFrame>>> results;
-    dp::thread_pool pool(m_config->m_executionThreadCount);
-    for (const auto &targetPath : targetPaths) {
-        auto targetFrame = Ffc::Vision::readStaticImage(targetPath);
-        results.emplace_back(pool.enqueue([=, this]() {
-            return processFrame(referenceFaces, targetFrame);
-        }));
-    }
-    if (results.size() != outputPaths.size()) {
-        m_logger->error("[FaceEnhancer] The number of results and output paths must be equal");
-        throw std::runtime_error("[FaceEnhancer] The number of results and output paths must be equal");
+    dp::thread_pool poolForProcess(m_config->m_executionThreadCount);
+    dp::thread_pool poolForWriteImage(std::thread::hardware_concurrency());
+    std::vector<std::future<bool>> writeImageResults;
+    for (int i = 0; i < targetPaths.size(); ++i) {
+        auto targetFrame = Ffc::Vision::readStaticImage(targetPaths[i]);
+        poolForProcess.enqueue([referenceFaces, targetFrame, &poolForWriteImage,
+                                &writeImageResults, outputPath = outputPaths[i], this]() -> void {
+            auto frame = processFrame(referenceFaces, targetFrame);
+            static std::mutex writeImageMutex;
+            std::lock_guard<std::mutex> lock(writeImageMutex);
+            writeImageResults.emplace_back(poolForWriteImage.enqueue([writeFrame = std::move(frame), outputPath]() {
+                return Ffc::Vision::writeImage(*writeFrame, outputPath);
+            }));
+        });
     }
 
-    const size_t numResults = results.size();
     const size_t numTargetPaths = targetPaths.size();
-    show_console_cursor(false);
     ProgressBar bar;
+    show_console_cursor(false);
     bar.setMaxProgress(100);
     bar.setProgress(0);
     bar.setPostfixText(std::format("{}/{}", 0, targetPaths.size()));
     bar.setPrefixText("[FaceEnhancer] Process images");
-    // #pragma omp parallel for
-    for (size_t i = 0; i < numResults; ++i) {
-        auto resultFrame = results[i].get();
-        Ffc::Vision::writeImage(*resultFrame, outputPaths[i]);
-        // #pragma omp critical
-        {
+    int i = 0;
+    static bool isAllWriteSuccess = true;
+    while (true) {
+        if (writeImageResults.size() <= i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            continue;
+        } else {
+            if (!writeImageResults[i].valid()) {
+                isAllWriteSuccess = false;
+                ++i;
+                m_logger->error(std::format("[FaceEnhancer] Failed to process or write image: {}", outputPaths[i]));
+                continue;
+            }
+
+            auto writeIsSuccess = writeImageResults[i].get();
+            if (!writeIsSuccess) {
+                isAllWriteSuccess = false;
+                m_logger->error(std::format("[FaceEnhancer] Failed to process or write image: {}", outputPaths[i]));
+            }
+
             bar.setPostfixText(std::format("{}/{}", (i + 1), numTargetPaths));
             int progress = static_cast<int>(std::round(((i + 1) * 100.0f) / numTargetPaths));
             bar.setProgress(progress);
+
+            ++i;
+            if (i == outputPaths.size()) {
+                break;
+            }
         }
     }
     show_console_cursor(true);
+    if (!isAllWriteSuccess) {
+        m_logger->error("[FaceEnhancer] Some images failed to process or write.");
+    }
 }
 } // namespace Ffc

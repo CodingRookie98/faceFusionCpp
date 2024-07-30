@@ -61,8 +61,8 @@ private:
 
     int m_inputHeight;
     int m_inputWidth;
-    std::shared_ptr<FaceAnalyser> m_faceAnalyser;
-    std::shared_ptr<FaceMasker> m_faceMasker;
+    std::shared_ptr<FaceAnalyser> m_faceAnalyser = nullptr;
+    std::shared_ptr<FaceMasker> m_faceMasker = nullptr;
     const std::shared_ptr<nlohmann::json> m_modelsInfoJson;
     const std::shared_ptr<const Config> m_config;
     std::string m_modelName;
