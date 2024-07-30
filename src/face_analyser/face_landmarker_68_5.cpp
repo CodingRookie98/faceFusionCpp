@@ -18,7 +18,7 @@ FaceLandmarker68_5::FaceLandmarker68_5(const std::shared_ptr<Ort::Env> &env,
     // 如果 modelPath不存在则下载
     if (!FileSystem::fileExists(modelPath)) {
         bool downloadSuccess = Downloader::download(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68").at("url"),
-                                                               "./models");
+                                                    "./models");
         if (!downloadSuccess) {
             throw std::runtime_error("Failed to download the model file: " + modelPath);
         }
@@ -28,7 +28,7 @@ FaceLandmarker68_5::FaceLandmarker68_5(const std::shared_ptr<Ort::Env> &env,
     m_inputWidth = m_inputNodeDims[0][2];
 }
 
-std::vector<float> FaceLandmarker68_5::preProcess(const FaceLandmark &faceLandmark5) {
+std::tuple<std::vector<float>, cv::Mat> FaceLandmarker68_5::preProcess(const FaceLandmark &faceLandmark5) {
     Ffc::Typing::FaceLandmark landmark5 = faceLandmark5;
 
     std::vector<float> fVec = m_modelsInfoJson->at("faceHelper").at("warpTemplate").at("ffhq_512").get<std::vector<float>>();
@@ -37,19 +37,21 @@ std::vector<float> FaceLandmarker68_5::preProcess(const FaceLandmark &faceLandma
         warpTemplate.emplace_back(fVec.at(i), fVec.at(i + 1));
     }
 
-    m_affineMatrix = Ffc::FaceHelper::estimateMatrixByFaceLandmark5(landmark5, warpTemplate, cv::Size(1, 1));
-    cv::transform(landmark5, landmark5, m_affineMatrix);
+    cv::Mat affineMatrix = Ffc::FaceHelper::estimateMatrixByFaceLandmark5(landmark5, warpTemplate, cv::Size(1, 1));
+    cv::transform(landmark5, landmark5, affineMatrix);
 
     std::vector<float> tensorData;
     for (const auto &point : landmark5) {
         tensorData.emplace_back(point.x);
         tensorData.emplace_back(point.y);
     }
-    return tensorData;
+    return std::make_tuple(tensorData, affineMatrix);
 }
 
 std::shared_ptr<Typing::FaceLandmark> FaceLandmarker68_5::detect(const FaceLandmark &faceLandmark5) {
-   std::vector<float> inputTensorData = this->preProcess(faceLandmark5);
+    std::vector<float> inputTensorData;
+    cv::Mat affineMatrix;
+    std::tie(inputTensorData, affineMatrix) = this->preProcess(faceLandmark5);
 
     std::vector<int64_t> inputShape{1, this->m_inputHeight, this->m_inputWidth};
     Ort::Value inputTensor = Ort::Value::CreateTensor<float>(this->m_memoryInfo,
@@ -72,7 +74,7 @@ std::shared_ptr<Typing::FaceLandmark> FaceLandmarker68_5::detect(const FaceLandm
     // 进行仿射变换
     cv::Mat transformedMat;
     cv::Mat affineMatrixInv;
-    cv::invertAffineTransform(m_affineMatrix, affineMatrixInv);
+    cv::invertAffineTransform(affineMatrix, affineMatrixInv);
     cv::transform(resultMat, transformedMat, affineMatrixInv);
 
     // 更新result

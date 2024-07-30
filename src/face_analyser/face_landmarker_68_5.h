@@ -29,10 +29,9 @@ public:
     std::shared_ptr<Typing::FaceLandmark> detect(const Typing::FaceLandmark &faceLandmark5);
 
 private:
-    std::vector<float> preProcess(const Typing::FaceLandmark &faceLandmark5);
+    std::tuple<std::vector<float>, cv::Mat> preProcess(const Typing::FaceLandmark &faceLandmark5);
     int m_inputHeight{};
     int m_inputWidth{};
-    cv::Mat m_affineMatrix;
     std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
 };
 

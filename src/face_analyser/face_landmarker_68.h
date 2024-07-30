@@ -33,8 +33,7 @@ public:
 private:
     int m_inputHeight{};
     int m_inputWidth{};
-    cv::Mat m_invAffineMatrix;
-    std::vector<float> preProcess(const Typing::VisionFrame &visionFrame, const BoundingBox &boundingBox);
+    std::tuple<std::vector<float>, cv::Mat> preProcess(const Typing::VisionFrame &visionFrame, const BoundingBox &boundingBox);
     const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
 };
 

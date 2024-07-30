@@ -30,7 +30,7 @@ public:
 
     std::shared_ptr<std::tuple<int, int>>
     detect(const Typing::VisionFrame &visionFrame,
-                    const Typing::BoundingBox &boundingBox);
+           const Typing::BoundingBox &boundingBox);
 
 private:
     const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;

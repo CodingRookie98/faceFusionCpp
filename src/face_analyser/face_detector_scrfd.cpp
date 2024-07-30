@@ -51,9 +51,9 @@ FaceDetectorScrfd::detect(const Typing::VisionFrame &visionFrame,
         int featureStride = m_featureStrides[index];
         std::vector<int> keepIndices;
         int size = ortOutputs[index].GetTensorTypeAndShapeInfo().GetShape()[0];
-        float *pdataScoreRaw = ortOutputs[index].GetTensorMutableData<float>();
+        float *pdataScore = ortOutputs[index].GetTensorMutableData<float>();
         for (size_t j = 0; j < size; ++j) {
-            float tempScore = *(pdataScoreRaw + j);
+            float tempScore = *(pdataScore + j);
             if (tempScore >= detectorScore) {
                 keepIndices.emplace_back(j);
             }
@@ -73,7 +73,6 @@ FaceDetectorScrfd::detect(const Typing::VisionFrame &visionFrame,
 
             float *pdataBbox = ortOutputs[index + m_featureMapChannel].GetTensorMutableData<float>();
             float *pdataLandmark = ortOutputs[index + 2 * m_featureMapChannel].GetTensorMutableData<float>();
-            float *pdataScore = ortOutputs[index].GetTensorMutableData<float>();
 
             size_t pdataBboxSize = ortOutputs[index + m_featureMapChannel].GetTensorTypeAndShapeInfo().GetShape()[0]
                                    * ortOutputs[index + m_featureMapChannel].GetTensorTypeAndShapeInfo().GetShape()[1];

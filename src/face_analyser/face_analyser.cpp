@@ -271,20 +271,15 @@ FaceAnalyser::detectLandmark68(const VisionFrame &visionFrame, const BoundingBox
 }
 
 std::shared_ptr<std::tuple<Typing::Embedding, Typing::Embedding>> FaceAnalyser::calculateEmbedding(const VisionFrame &visionFrame, const FaceLandmark &faceLandmark5_68) {
-    std::shared_ptr<FaceRecognizerArc> recognizerArc = nullptr;
-    if (!m_analyserMap.contains(RecognizeWithArcFace)) {
-        recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(getAnalyser(RecognizeWithArcFace));
+    std::shared_ptr<FaceRecognizerArc> recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(getAnalyser(RecognizeWithArcFace));
+    if (m_config->m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Simswap_256
+        || m_config->m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Simswap_512_unofficial) {
+        if (recognizerArc->getArcType() != FaceRecognizerArc::ArcType::Simswap) {
+            recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(getAnalyser(RecognizeWithArcFace));
+        }
     } else {
-        recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(m_analyserMap.at(RecognizeWithArcFace));
-        if (m_config->m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Simswap_256
-            || m_config->m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Simswap_512_unofficial) {
-            if (recognizerArc->getArcType() != FaceRecognizerArc::ArcType::Simswap) {
-                recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(getAnalyser(RecognizeWithArcFace));
-            }
-        } else {
-            if (recognizerArc->getArcType() != FaceRecognizerArc::ArcType::W600k_R50) {
-                recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(getAnalyser(RecognizeWithArcFace));
-            }
+        if (recognizerArc->getArcType() != FaceRecognizerArc::ArcType::W600k_R50) {
+            recognizerArc = std::dynamic_pointer_cast<FaceRecognizerArc>(getAnalyser(RecognizeWithArcFace));
         }
     }
     return recognizerArc->recognize(visionFrame, faceLandmark5_68);

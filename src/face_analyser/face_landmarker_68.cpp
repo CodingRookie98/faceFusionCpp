@@ -31,7 +31,9 @@ FaceLandmarker68::FaceLandmarker68(const std::shared_ptr<Ort::Env> &env,
 
 std::shared_ptr<std::tuple<Typing::FaceLandmark, Typing::Score>>
 FaceLandmarker68::detect(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
-    std::vector<float> inputData = this->preProcess(visionFrame, boundingBox);
+    std::vector<float> inputData;
+    cv::Mat invAffineMatrix;
+    std::tie(inputData, invAffineMatrix) = this->preProcess(visionFrame, boundingBox);
     std::vector<int64_t> inputImgShape = {1, 3, this->m_inputHeight, this->m_inputWidth};
     Ort::Value inputTensor = Ort::Value::CreateTensor<float>(this->m_memoryInfo, inputData.data(), inputData.size(), inputImgShape.data(), inputImgShape.size());
 
@@ -49,7 +51,7 @@ FaceLandmarker68::detect(const VisionFrame &visionFrame, const BoundingBox &boun
         faceLandmark68[i] = cv::Point2f(x, y);
         scores[i] = score;
     }
-    cv::transform(faceLandmark68, faceLandmark68, this->m_invAffineMatrix);
+    cv::transform(faceLandmark68, faceLandmark68, invAffineMatrix);
 
     float sum = 0.0;
     for (int i = 0; i < numPoints; i++) {
@@ -60,7 +62,8 @@ FaceLandmarker68::detect(const VisionFrame &visionFrame, const BoundingBox &boun
                                        Typing::Score>>(std::make_tuple(faceLandmark68, meanScore));
 }
 
-std::vector<float> FaceLandmarker68::preProcess(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
+std::tuple<std::vector<float>, cv::Mat>
+FaceLandmarker68::preProcess(const VisionFrame &visionFrame, const BoundingBox &boundingBox) {
     float subMax = std::max(boundingBox.xmax - boundingBox.xmin, boundingBox.ymax - boundingBox.ymin);
     const float scale = 195.f / subMax;
     const std::vector<float> translation = {(256.f - (boundingBox.xmax + boundingBox.xmin) * scale) * 0.5f, (256.f - (boundingBox.ymax + boundingBox.ymin) * scale) * 0.5f};
@@ -69,7 +72,8 @@ std::vector<float> FaceLandmarker68::preProcess(const VisionFrame &visionFrame, 
                                                                          scale, cv::Size{256, 256});
     cv::Mat cropImg = std::get<0>(*cropVisionFrameAndAffineMat);
     cv::Mat affineMatrix = std::get<1>(*cropVisionFrameAndAffineMat);
-    cv::invertAffineTransform(affineMatrix, this->m_invAffineMatrix);
+    cv::Mat invAffineMatrix;
+    cv::invertAffineTransform(affineMatrix, invAffineMatrix);
 
     std::vector<cv::Mat> bgrChannels(3);
     split(cropImg, bgrChannels);
@@ -85,6 +89,6 @@ std::vector<float> FaceLandmarker68::preProcess(const VisionFrame &visionFrame, 
     memcpy(inputData.data() + imageArea, (float *)bgrChannels[1].data, singleChnSize);
     memcpy(inputData.data() + imageArea * 2, (float *)bgrChannels[2].data, singleChnSize);
 
-    return inputData;
+    return std::make_tuple(inputData, invAffineMatrix);
 }
 } // namespace Ffc
