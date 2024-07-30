@@ -35,7 +35,6 @@ public:
 private:
     const std::shared_ptr<const nlohmann::json> m_modelsInfoJson;
     std::shared_ptr<cv::FaceDetectorYN> m_faceDetectorYN;
-    cv::Mat m_inputVisionFrame;
 };
 
 } // namespace Ffc

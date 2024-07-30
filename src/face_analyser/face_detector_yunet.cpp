@@ -34,16 +34,20 @@ FaceDetectorYunet::detect(const VisionFrame &visionFrame, const cv::Size &faceDe
     const int faceDetectorHeight = faceDetectorSize.height;
     const int faceDetectorWidth = faceDetectorSize.width;
 
-    auto tempVisionFrame = Vision::resizeFrameResolution(visionFrame, cv::Size(faceDetectorWidth, faceDetectorHeight));
-    const int ratioHeight = (float)visionFrame.rows / (float)tempVisionFrame.rows;
-    const int ratioWidth = (float)visionFrame.cols / (float)tempVisionFrame.cols;
-    const int inputHeight = tempVisionFrame.rows;
-    const int inputWidth = tempVisionFrame.cols;
-
-    m_faceDetectorYN->setInputSize(cv::Size(inputWidth, inputHeight));
-    m_faceDetectorYN->setScoreThreshold(scoreThreshold);
+    auto inputVisionFrame = Vision::resizeFrameResolution(visionFrame, cv::Size(faceDetectorWidth, faceDetectorHeight));
+    const int ratioHeight = (float)visionFrame.rows / (float)inputVisionFrame.rows;
+    const int ratioWidth = (float)visionFrame.cols / (float)inputVisionFrame.cols;
+    const int inputHeight = inputVisionFrame.rows;
+    const int inputWidth = inputVisionFrame.cols;
+    
     cv::Mat output;
-    m_faceDetectorYN->detect(m_inputVisionFrame, output);
+    {
+        static std::mutex mtx;
+        std::lock_guard<std::mutex> lock(mtx);
+        m_faceDetectorYN->setInputSize(cv::Size(inputWidth, inputHeight));
+        m_faceDetectorYN->setScoreThreshold(scoreThreshold);
+        m_faceDetectorYN->detect(inputVisionFrame, output);
+    }
 
     std::vector<Typing::BoundingBox> resultBoundingBoxes;
     std::vector<Typing::FaceLandmark> resultFaceLandmarks;
