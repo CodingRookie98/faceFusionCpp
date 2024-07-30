@@ -362,7 +362,7 @@ void Config::faceSelector() {
 }
 void Config::faceAnalyser() {
     // face_analyser
-    std::string value = m_ini.GetValue("face_analyser", "ace_analyser_model", "yoloface");
+    std::string value = m_ini.GetValue("face_analyser", "face_detector_model", "yoloface");
     std::vector<std::string> analysers;
     std::istringstream iss(value);
     std::string word;
