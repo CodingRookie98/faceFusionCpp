@@ -11,6 +11,10 @@
 #ifndef FACEFUSIONCPP_SRC_FACE_ANALYSER_FACE_LANDMARKER_68_H_
 #define FACEFUSIONCPP_SRC_FACE_ANALYSER_FACE_LANDMARKER_68_H_
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#define NOMINMAX
+#endif
+
 #include <opencv2/imgproc.hpp>
 #include <nlohmann/json.hpp>
 #include "typing.h"

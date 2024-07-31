@@ -11,6 +11,10 @@
 #ifndef FACEFUSIONCPP_SRC_FACE_MASKER_H_
 #define FACEFUSIONCPP_SRC_FACE_MASKER_H_
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#define NOMINMAX
+#endif
+
 #include <unordered_set>
 #include <onnxruntime_cxx_api.h>
 #include <nlohmann/json.hpp>
