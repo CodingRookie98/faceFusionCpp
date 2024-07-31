@@ -130,7 +130,7 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
             bar.setProgress(progress);
             
             ++i;
-            if (i == outputPaths.size()) {
+            if (i >= outputPaths.size()) {
                 break;
             }
         }

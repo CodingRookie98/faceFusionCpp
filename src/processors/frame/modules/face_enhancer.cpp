@@ -397,7 +397,7 @@ void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePa
             bar.setProgress(progress);
 
             ++i;
-            if (i == outputPaths.size()) {
+            if (i >= outputPaths.size()) {
                 break;
             }
         }
