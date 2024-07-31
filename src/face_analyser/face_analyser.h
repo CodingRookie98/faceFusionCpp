@@ -56,17 +56,16 @@ public:
 
     std::shared_ptr<Typing::Face> getOneFace(const Typing::VisionFrame &visionFrame,
                                              const int &position = 0);
-    
+
     Typing::Faces findSimilarFaces(const Typing::Faces &referenceFaces,
                                    const Typing::VisionFrame &targetVisionFrame,
                                    const float &faceDistance);
-    
-    bool compareFace(const Typing::Face &face,
-                     const Typing::Face &referenceFace,
-                     const float &faceDistance);
-    
+
+    static bool compareFace(const Typing::Face &face, const Typing::Face &referenceFace,
+                            const float &faceDistance);
+
     static float calculateFaceDistance(const Typing::Face &face1,
-                                const Typing::Face &face2);
+                                       const Typing::Face &face2);
 
     bool preCheck();
 
@@ -78,9 +77,9 @@ private:
     const std::shared_ptr<const Config> m_config;
     std::shared_ptr<Logger> m_logger = Logger::getInstance();
     std::shared_ptr<FaceStore> m_faceStore = FaceStore::getInstance();
-    
+
     std::shared_ptr<OrtSession> getAnalyser(const Method &method);
-    
+
     std::shared_ptr<Typing::Faces> createFaces(const Typing::VisionFrame &visionFrame,
                                                const std::shared_ptr<std::tuple<std::vector<Typing::BoundingBox>,
                                                                                 std::vector<Typing::FaceLandmark>,

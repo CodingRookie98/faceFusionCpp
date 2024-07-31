@@ -52,7 +52,7 @@ public:
     // face analyser
     float m_faceDetectorScore;
     float m_faceLandmarkerScore;
-    std::unordered_set<Typing::EnumFaceDetectModel> m_faceDetectorModelSet;
+    Typing::EnumFaceDetectModel m_faceDetectorModel;
     cv::Size m_faceDetectorSize;
     Typing::EnumFaceRecognizerModel m_faceRecognizerModel;
 

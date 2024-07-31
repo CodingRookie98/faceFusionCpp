@@ -126,7 +126,7 @@ void Config::frameProcessors() {
     } else {
         m_faceEnhancerModel = Typing::EnumFaceEnhancerModel::FEM_Gfpgan_14;
     }
-    
+
     value = m_ini.GetValue("frame_processors", "face_enhancer_blend", "80");
     if (!value.empty()) {
         m_faceEnhancerBlend = std::stoi(value);
@@ -138,7 +138,7 @@ void Config::frameProcessors() {
     } else {
         m_faceEnhancerBlend = 80;
     }
-    
+
     value = m_ini.GetValue("frame_processors", "face_swapper_model", "inswapper_128_fp16");
     if (!value.empty()) {
         if (value == "inswapper_128_fp16") {
@@ -266,7 +266,7 @@ void Config::faceSelector() {
     } else {
         m_faceSelectorMode = Typing::EnumFaceSelectorMode::FS_Reference;
     }
-    
+
     value = m_ini.GetValue("face_selector", "face_selector_order", "left-right");
     if (!value.empty()) {
         if (value == "left-right") {
@@ -292,7 +292,7 @@ void Config::faceSelector() {
     } else {
         m_faceSelectorOrder = Typing::EnumFaceSelectorOrder::FSO_Left_Right;
     }
-    
+
     value = m_ini.GetValue("face_selector", "face_selector_age", "All");
     if (!value.empty()) {
         if (value == "child") {
@@ -312,7 +312,7 @@ void Config::faceSelector() {
     } else {
         m_faceSelectorAge = Typing::EnumFaceSelectorAge::FSA_All;
     }
-    
+
     value = m_ini.GetValue("face_selector", "face_selector_gender", "All");
     if (!value.empty()) {
         if (value == "male") {
@@ -328,7 +328,7 @@ void Config::faceSelector() {
     } else {
         m_faceSelectorGender = Typing::EnumFaceSelectorGender::FSG_All;
     }
-    
+
     value = m_ini.GetValue("face_selector", "reference_face_position", "0");
     if (!value.empty()) {
         m_referenceFacePosition = std::stoi(value);
@@ -338,7 +338,7 @@ void Config::faceSelector() {
     } else {
         m_referenceFacePosition = 0;
     }
-    
+
     value = m_ini.GetValue("face_selector", "reference_face_distance", "0.6");
     if (!value.empty()) {
         m_referenceFaceDistance = std::stof(value);
@@ -372,23 +372,23 @@ void Config::faceAnalyser() {
     if (!analysers.empty()) {
         for (const auto &analyser : analysers) {
             if (analyser == "many") {
-                m_faceDetectorModelSet.insert(Typing::EnumFaceDetectModel::FD_Many);
+                m_faceDetectorModel = Typing::EnumFaceDetectModel::FD_Many;
             } else if (analyser == "retinaface") {
-                m_faceDetectorModelSet.insert(Typing::EnumFaceDetectModel::FD_Retina);
+                m_faceDetectorModel = Typing::EnumFaceDetectModel::FD_Retina;
             } else if (analyser == "yoloface") {
-                m_faceDetectorModelSet.insert(Typing::EnumFaceDetectModel::FD_Yoloface);
+                m_faceDetectorModel = Typing::EnumFaceDetectModel::FD_Yoloface;
             } else if (analyser == "scrfd") {
-                m_faceDetectorModelSet.insert(Typing::EnumFaceDetectModel::FD_Scrfd);
+                m_faceDetectorModel = Typing::EnumFaceDetectModel::FD_Scrfd;
             } else if (analyser == "yunet") {
-                m_faceDetectorModelSet.insert(Typing::EnumFaceDetectModel::FD_Yunet);
+                m_faceDetectorModel = Typing::EnumFaceDetectModel::FD_Yunet;
             } else {
                 m_logger->warn("[Config] Invalid face_analyser_model value: " + analyser + " Use default: yolo");
-                m_faceDetectorModelSet.insert(Typing::EnumFaceDetectModel::FD_Yoloface);
+                m_faceDetectorModel = Typing::EnumFaceDetectModel::FD_Yoloface;
             }
         }
     } else {
         m_logger->warn("[Config] face_analyser_model is not set. Use default: yolo");
-        m_faceDetectorModelSet.insert(Typing::EnumFaceDetectModel::FD_Yoloface);
+        m_faceDetectorModel = Typing::EnumFaceDetectModel::FD_Yoloface;
     }
 
     value = m_ini.GetValue("face_analyser", "face_detector_size", "640x640");
@@ -397,7 +397,7 @@ void Config::faceAnalyser() {
     } else {
         m_faceDetectorSize = cv::Size(640, 640);
     }
-    
+
     value = m_ini.GetValue("face_analyser", "face_detector_score", "0.5");
     if (!value.empty()) {
         m_faceDetectorScore = std::stof(value);
@@ -409,7 +409,7 @@ void Config::faceAnalyser() {
     } else {
         m_faceDetectorScore = 0.5f;
     }
-    
+
     value = m_ini.GetValue("face_analyser", "face_landmaker_score", "0.5");
     if (!value.empty()) {
         m_faceLandmarkerScore = std::stof(value);
@@ -538,8 +538,8 @@ std::shared_ptr<Config> Config::getInstance(const std::string &configPath) {
 void Config::execution() {
     std::string value = m_ini.GetValue("execution", "execution_thread_count", "1");
     if (!value.empty()) {
-       m_executionThreadCount = std::stoi(value);
-       if (m_executionThreadCount < 1) {
+        m_executionThreadCount = std::stoi(value);
+        if (m_executionThreadCount < 1) {
             m_executionThreadCount = 1;
         }
     } else {

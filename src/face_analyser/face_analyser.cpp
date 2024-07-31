@@ -141,32 +141,31 @@ std::shared_ptr<Typing::Faces> FaceAnalyser::getManyFaces(const Typing::VisionFr
     if (!facesCache.empty()) {
         resultFaces = std::make_shared<Typing::Faces>(std::move(facesCache));
     } else {
-        if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-            || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yoloface)) {
+        if (m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Many
+            || m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Yoloface) {
             auto result = this->detectWithYoloFace(visionFrame, m_config->m_faceDetectorSize);
             std::tie(boundingBoxes, landmarks5, scores) = *result;
             resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
             resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
             resultScores.insert(resultScores.end(), scores.begin(), scores.end());
         }
-        if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-            || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Scrfd)) {
+        if (m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Many
+            || m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Scrfd) {
             auto result = this->detectWithScrfd(visionFrame, m_config->m_faceDetectorSize);
             std::tie(boundingBoxes, landmarks5, scores) = *result;
             resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
             resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
             resultScores.insert(resultScores.end(), scores.begin(), scores.end());
         }
-        if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-            || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Retina)) {
+        if (m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Many
+            || m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Retina) {
             auto result = this->detectWithRetina(visionFrame, m_config->m_faceDetectorSize);
             std::tie(boundingBoxes, landmarks5, scores) = *result;
             resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
             resultLandmarks5.insert(resultLandmarks5.end(), landmarks5.begin(), landmarks5.end());
             resultScores.insert(resultScores.end(), scores.begin(), scores.end());
         }
-        if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-            || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yunet)) {
+        if (m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Yunet) {
             auto result = this->detectWithYunet(visionFrame, m_config->m_faceDetectorSize);
             std::tie(boundingBoxes, landmarks5, scores) = *result;
             resultBoundingBoxes.insert(resultBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
@@ -222,7 +221,7 @@ FaceAnalyser::createFaces(const Typing::VisionFrame &visionFrame,
     auto faceLandmarks = new std::vector<Typing::FaceLandmark>(std::get<1>(*input));
     auto scores = new std::vector<Typing::Score>(std::get<2>(*input));
 
-    float iouThreshold = m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many) ? 0.1 : 0.4;
+    float iouThreshold = m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Many ? 0.1 : 0.4;
     auto keepIndices = Ffc::FaceHelper::applyNms(*boundingBoxes, *scores, iouThreshold);
 
     for (const auto &index : keepIndices) {
@@ -414,23 +413,23 @@ bool FaceAnalyser::preCheck() {
     modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_landmarker_68_5").at("path").get<std::string>());
     modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("gender_age").at("path").get<std::string>());
 
-    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yoloface)) {
+    if (m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Many
+        || m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Yoloface) {
         modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yoloface").at("url").get<std::string>());
         modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yoloface").at("path").get<std::string>());
     }
-    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Scrfd)) {
+    if (m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Many
+        || m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Scrfd) {
         modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_scrfd").at("url").get<std::string>());
         modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_scrfd").at("path").get<std::string>());
     }
-    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Retina)) {
+    if (m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Many
+        || m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Retina) {
         modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_retinaface").at("url").get<std::string>());
         modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_retinaface").at("path").get<std::string>());
     }
-    if (m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Many)
-        || m_config->m_faceDetectorModelSet.contains(Typing::EnumFaceDetectModel::FD_Yunet)) {
+    if (m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Many
+        || m_config->m_faceDetectorModel == Typing::EnumFaceDetectModel::FD_Yunet) {
         modelUrls.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yunet").at("url").get<std::string>());
         modelPaths.emplace_back(m_modelsInfoJson->at("faceAnalyserModels").at("face_detector_yunet").at("path").get<std::string>());
     }

@@ -335,6 +335,16 @@ void FileSystem::copyFiles(const std::vector<std::string> &sources, const std::v
 }
 
 void FileSystem::moveFile(const std::string &source, const std::string &destination) {
+    // if parent path of destination is not exist
+    if (!isDirectory(std::filesystem::path(destination).parent_path().string())) {
+        createDirectory(std::filesystem::path(destination).parent_path().string());
+    }
+    
+    // if destination is exist
+    if (fileExists(destination)) {
+        removeFile(destination);
+    }
+    
     std::filesystem::rename(source, destination);
 }
 
@@ -348,7 +358,7 @@ void FileSystem::moveFiles(const std::vector<std::string> &sources,
     std::vector<std::future<void>> futures;
     for (size_t i = 0; i < sources.size(); ++i) {
         futures.emplace_back(pool.enqueue([sources, destination, i]() {
-            std::filesystem::rename(sources[i], destination[i]);
+            moveFile(sources[i], destination[i]);
         }));
     }
     for (auto &future : futures) {
