@@ -27,10 +27,22 @@ OrtSession::OrtSession(const std::shared_ptr<Ort::Env> &env) {
 }
 
 void OrtSession::createSession(const std::string &modelPath) {
+    std::lock_guard<std::mutex> lock(m_mutex);
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     // windows
     std::wstring wideModelPath(modelPath.begin(), modelPath.end());
-    m_session = std::make_shared<Ort::Session>(*m_env, wideModelPath.c_str(), m_sessionOptions);
+    try {
+        m_session = std::make_shared<Ort::Session>(*m_env, wideModelPath.c_str(), m_sessionOptions);
+    } catch (const Ort::Exception &e) {
+        m_logger->error(std::format("CreateSession: Ort::Exception: {}", e.what()));
+        return;
+    } catch (const std::exception &e) {
+        m_logger->error(std::format("CreateSession: std::exception: {}", e.what()));
+        return;
+    } catch (...) {
+        m_logger->error("CreateSession: Unknown exception occurred.");
+        return;
+    }
 #else
     // linux
     m_session = std::make_shared<Ort::Session>(Ort::Session(*m_env, modelPath.c_str(), m_sessionOptions));
@@ -81,18 +93,64 @@ void OrtSession::appendProviderTensorrt() {
         m_logger->error("TensorRT execution provider is not available in your environment.");
         return;
     }
-    m_tensorrtProviderOptions = std::make_shared<OrtTensorRTProviderOptions>();
-    if (m_config->m_enableTensorrtCache) {
-        m_tensorrtProviderOptions->trt_engine_cache_enable = true;
-        m_tensorrtProviderOptions->trt_engine_cache_path = "./trt_engine_cache_path";
-    }
-    if (m_config->m_enableTensorrtEmbedEngine) {
-        // TODO: Implement TENSORRT_EMBED_ENGINE
-    }
+    std::vector<const char *> keys;
+    std::vector<const char *> values;
+    const auto &api = Ort::GetApi();
+    OrtTensorRTProviderOptionsV2 *tensorrtProviderOptionsV2;
+    api.CreateTensorRTProviderOptions(&tensorrtProviderOptionsV2);
+
+    std::string trtMaxWorkSpaceSiz;
     if (m_config->m_perSessionGpuMemLimit > 0) {
-        m_tensorrtProviderOptions->trt_max_workspace_size = m_config->m_perSessionGpuMemLimit * (1 << 30);
+        trtMaxWorkSpaceSiz = std::to_string((size_t)m_config->m_perSessionGpuMemLimit * (1 << 30));
+        keys.emplace_back("trt_max_workspace_size");
+        values.emplace_back(trtMaxWorkSpaceSiz.c_str());
     }
-    m_tensorrtProviderOptions->device_id = m_config->m_executionDeviceId;
-    m_sessionOptions.AppendExecutionProvider_TensorRT(*m_tensorrtProviderOptions);
+
+    std::string deviceId = std::to_string(m_config->m_executionDeviceId);
+    keys.emplace_back("device_id");
+    values.emplace_back(deviceId.c_str());
+
+    std::string enableTensorrtCache;
+    std::string enableTensorrtEmbedEngine;
+    std::string tensorrtEmbedEnginePath;
+    if (m_config->m_enableTensorrtEmbedEngine) {
+        enableTensorrtCache = std::to_string(m_config->m_enableTensorrtCache);
+        enableTensorrtEmbedEngine = std::to_string(m_config->m_enableTensorrtEmbedEngine);
+        tensorrtEmbedEnginePath = "./trt_engine_cache";
+
+        keys.emplace_back("trt_engine_cache_enable");
+        values.emplace_back(enableTensorrtCache.c_str());
+        keys.emplace_back("trt_dump_ep_context_model");
+        values.emplace_back(enableTensorrtEmbedEngine.c_str());
+        keys.emplace_back("trt_ep_context_file_path");
+        values.emplace_back(tensorrtEmbedEnginePath.c_str());
+    }
+
+    std::string tensorrtCachePath;
+    if (m_config->m_enableTensorrtCache) {
+        if (enableTensorrtEmbedEngine.empty()) {
+            keys.emplace_back("trt_engine_cache_enable");
+            values.emplace_back("1");
+            tensorrtCachePath = "./trt_engine_cache/trt_engines";
+        } else {
+            tensorrtCachePath = "trt_engines";
+        }
+
+        keys.emplace_back("trt_engine_cache_path");
+        values.emplace_back(tensorrtCachePath.c_str());
+    }
+
+    Ort::ThrowOnError(api.UpdateTensorRTProviderOptions(tensorrtProviderOptionsV2,
+                                                        keys.data(), values.data(), keys.size()));
+    try {
+        m_sessionOptions.AppendExecutionProvider_TensorRT_V2(*tensorrtProviderOptionsV2);
+    } catch (const Ort::Exception &e) {
+        m_logger->error(std::format("Failed to append TensorRT execution provider: {}", e.what()));
+    } catch (const std::exception &e) {
+        m_logger->error(std::format("Failed to append TensorRT execution provider: {}", e.what()));
+    } catch (...) {
+        m_logger->error("Failed to append TensorRT execution provider: Unknown error");
+    }
+    api.ReleaseTensorRTProviderOptions(tensorrtProviderOptionsV2);
 }
 } // namespace Ffc

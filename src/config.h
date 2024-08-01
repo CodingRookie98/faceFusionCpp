@@ -45,7 +45,7 @@ public:
     bool m_forceDownload;
     bool m_skipDownload;
     Logger::LogLevel m_logLevel;
-    
+
     // execution
     int m_executionDeviceId;
     std::unordered_set<Typing::EnumExecutionProvider> m_executionProviders;
@@ -85,8 +85,7 @@ public:
     cv::Size m_outputImageResolution;
 
     // Frame Processors
-    std::vector<Typing::EnumFrameProcessor>
-        m_frameProcessors;
+    std::vector<Typing::EnumFrameProcessor> m_frameProcessors;
     Typing::EnumFaceSwapperModel m_faceSwapperModel;
     Typing::EnumFaceEnhancerModel m_faceEnhancerModel;
     int m_faceEnhancerBlend;

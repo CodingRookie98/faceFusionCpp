@@ -27,6 +27,7 @@ public:
     void createSession(const std::string &modelPath);
 
     // protected:
+    std::mutex m_mutex;
     std::shared_ptr<Ort::Env> m_env;
     std::shared_ptr<Ort::Session> m_session;
     Ort::SessionOptions m_sessionOptions;

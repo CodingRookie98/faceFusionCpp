@@ -32,6 +32,8 @@ void Config::loadConfig() {
     general();
     misc();
     execution();
+    tensort();
+    memory();
     faceAnalyser();
     faceSelector();
     faceMasker();
