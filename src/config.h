@@ -47,7 +47,16 @@ public:
     Logger::LogLevel m_logLevel;
     
     // execution
+    int m_executionDeviceId;
+    std::unordered_set<Typing::EnumExecutionProvider> m_executionProviders;
     int m_executionThreadCount;
+
+    // tensort
+    bool m_enableTensorrtCache;
+    bool m_enableTensorrtEmbedEngine;
+
+    // memory
+    float m_perSessionGpuMemLimit;
 
     // face analyser
     float m_faceDetectorScore;
@@ -94,6 +103,8 @@ private:
     void general();
     void misc();
     void execution();
+    void tensort();
+    void memory();
     void faceAnalyser();
     void faceSelector();
     void faceMasker();

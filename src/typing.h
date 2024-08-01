@@ -158,6 +158,11 @@ enum EnumFaceRecognizerModel {
     FRM_ArcFaceSimSwap,
     FRM_ArcFaceUniface
 };
+enum EnumExecutionProvider {
+    EP_CPU,
+    EP_CUDA,
+    EP_TensorRT
+};
 }
 } // namespace Ffc::Typing
 #endif // FACEFUSIONCPP_SRC_TYPING_H_

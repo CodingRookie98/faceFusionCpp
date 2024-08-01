@@ -81,20 +81,17 @@ std::vector<int> Config::parseStringToVector(const std::string &input) {
 void Config::frameProcessors() {
     // frame_processors
     std::string value = m_ini.GetValue("frame_processors", "frame_processors", "face_swapper");
-    std::vector<std::string> frameProcessors;
-    std::istringstream iss(value);
-    std::string word;
-    while (iss >> word) {
-        frameProcessors.push_back(word);
-    }
-    for (const auto &processor : frameProcessors) {
-        if (processor == "face_swapper") {
+    if (!value.empty()) {
+        if (value.find("face_swapper") != std::string::npos) {
             m_frameProcessors.emplace_back(Typing::EnumFrameProcessor::FaceSwapper);
-        } else if (processor == "face_enhancer") {
-            m_frameProcessors.emplace_back(Typing::EnumFrameProcessor::FaceEnhancer);
         }
-    }
-    if (m_frameProcessors.empty()) {
+        if (value.find("face_enhancer") != std::string::npos) {
+            m_frameProcessors.emplace_back(Typing::EnumFrameProcessor::FaceEnhancer);
+        } else {
+            m_logger->warn("[Config] The user-specified frame processors are not supported; using the default: face_swapper.");
+            m_frameProcessors.emplace_back(Typing::EnumFrameProcessor::FaceSwapper);
+        }
+    } else {
         m_logger->warn("[Config] No frame processors specified, using default: face_swapper");
         m_frameProcessors.emplace_back(Typing::EnumFrameProcessor::FaceSwapper);
     }
@@ -536,7 +533,35 @@ std::shared_ptr<Config> Config::getInstance(const std::string &configPath) {
 }
 
 void Config::execution() {
-    std::string value = m_ini.GetValue("execution", "execution_thread_count", "1");
+    std::string value = m_ini.GetValue("execution", "execution_device_id", "0");
+    if (!value.empty()) {
+        m_executionDeviceId = std::stoi(value);
+        if (m_executionDeviceId < 0) {
+            m_executionDeviceId = 0;
+        }
+    } else {
+        m_executionDeviceId = 0;
+    }
+
+    value = m_ini.GetValue("execution", "execution_providers", "cpu");
+    if (!value.empty()) {
+        if (value.find("cpu") != std::string::npos) {
+            m_executionProviders.insert(Typing::EnumExecutionProvider::EP_CPU);
+        }
+        if (value.find("cuda") != std::string::npos) {
+            m_executionProviders.insert(Typing::EnumExecutionProvider::EP_CUDA);
+        }
+        if (value.find("tensorrt") != std::string::npos) {
+            m_executionProviders.insert(Typing::EnumExecutionProvider::EP_TensorRT);
+        } else {
+            m_logger->warn("[Config] Invalid execution_providers: " + value + " Use default: cpu");
+            m_executionProviders.insert(Typing::EnumExecutionProvider::EP_CPU);
+        }
+    } else {
+        m_executionProviders.insert(Typing::EnumExecutionProvider::EP_CPU);
+    }
+
+    value = m_ini.GetValue("execution", "execution_thread_count", "1");
     if (!value.empty()) {
         m_executionThreadCount = std::stoi(value);
         if (m_executionThreadCount < 1) {
@@ -546,4 +571,47 @@ void Config::execution() {
         m_executionThreadCount = 1;
     }
 }
+
+void Config::tensort() {
+    std::string value = m_ini.GetValue("tensorrt", "enable_cache", "false");
+    if (!value.empty()) {
+        if (value == "true") {
+            m_enableTensorrtCache = true;
+        } else if (value == "false") {
+            m_enableTensorrtCache = false;
+        } else {
+            m_logger->warn("[Config] Invalid enable_cache: " + value + " Use default: false");
+            m_enableTensorrtCache = false;
+        }
+    } else {
+        m_enableTensorrtCache = false;
+    }
+
+    value = m_ini.GetValue("tensorrt", "enable_embed_engine", "false");
+    if (!value.empty()) {
+        if (value == "true") {
+            m_enableTensorrtEmbedEngine = true;
+        } else if (value == "false") {
+            m_enableTensorrtEmbedEngine = false;
+        } else {
+            m_logger->warn("[Config] Invalid enable_embed_engine: " + value + " Use default: false");
+            m_enableTensorrtEmbedEngine = false;
+        }
+    } else {
+        m_enableTensorrtEmbedEngine = false;
+    }
+}
+
+void Config::memory() {
+    std::string value = m_ini.GetValue("memory", "per_session_gpu_mem_limit", "0");
+    if (!value.empty()) {
+        m_perSessionGpuMemLimit = std::stof(value);
+        if (m_perSessionGpuMemLimit < 0) {
+            m_perSessionGpuMemLimit = 0;
+        }
+    } else {
+        m_perSessionGpuMemLimit = 0;
+    }
+}
+
 } // namespace Ffc
