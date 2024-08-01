@@ -1,17 +1,21 @@
 cmake_minimum_required(VERSION 3.28)
-project(faceFusionCpp)
+project(faceFusionCpp VERSION 0.1.0 DESCRIPTION "This project is the C++ version of the open-source project FaceFusion.")
 
 set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug)
 Set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/bin/Release)
 
-add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/source-charset:utf-8>")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+    add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+endif ()
 
 set(ProgramName "faceFusion")
 add_executable(${ProgramName} main.cpp)
 
 add_subdirectory(src)
+set (ONNXRUNTIME "C:/devTools/cppPackage/onnxruntime-win-x64-gpu-1.17.3")
 
 find_package(OpenCV REQUIRED)
 find_package(ONNX CONFIG REQUIRED)
@@ -26,6 +30,8 @@ find_package(thread-pool CONFIG REQUIRED)
 target_include_directories(${ProgramName} PRIVATE ${SIMPLEINI_INCLUDE_DIRS})
 target_link_directories(${ProgramName} PRIVATE ${VCPKG_INSTALLED_DIR}/x64-windows/lib)
 target_link_libraries(${ProgramName} PRIVATE ${OpenCV_LIBS})
+target_include_directories(${ProgramName} PRIVATE "${ONNXRUNTIME}/include")
+target_link_directories(${ProgramName} PRIVATE "${ONNXRUNTIME}/lib")
 target_link_libraries(${ProgramName} PRIVATE onnxruntime)
 target_link_libraries(${ProgramName} PRIVATE onnx onnx_proto)
 target_link_libraries(${ProgramName} PRIVATE nlohmann_json::nlohmann_json)
