@@ -26,6 +26,7 @@ void Config::loadConfig() {
     m_ini.SetUnicode();
     SI_Error rc = m_ini.LoadFile(m_configPath.c_str());
     if (rc < 0) {
+        m_logger->error("Failed to load config file");
         throw std::runtime_error("Failed to load config file");
     };
 
@@ -575,7 +576,7 @@ void Config::execution() {
 }
 
 void Config::tensort() {
-    std::string value = m_ini.GetValue("tensorrt", "enable_cache", "false");
+    std::string value = m_ini.GetValue("tensorrt", "enable_engine_cache", "false");
     if (!value.empty()) {
         if (value == "true") {
             m_enableTensorrtCache = true;
