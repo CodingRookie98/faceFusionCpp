@@ -139,9 +139,10 @@ void OrtSession::appendProviderTensorrt() {
         keys.emplace_back("trt_engine_cache_path");
         values.emplace_back(tensorrtCachePath.c_str());
     }
-    try {
+
     Ort::ThrowOnError(api.UpdateTensorRTProviderOptions(tensorrtProviderOptionsV2,
                                                         keys.data(), values.data(), keys.size()));
+    try {
         m_sessionOptions.AppendExecutionProvider_TensorRT_V2(*tensorrtProviderOptionsV2);
     } catch (const Ort::Exception &e) {
         m_logger->error(std::format("Failed to append TensorRT execution provider: {}", e.what()));
