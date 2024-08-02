@@ -99,14 +99,15 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
     }
 
     const size_t numTargetPaths = targetPaths.size();
-    ProgressBar bar;
+   /* ProgressBar bar;
     show_console_cursor(false);
     bar.setMaxProgress(100);
     bar.setProgress(0);
     bar.setPostfixText(std::format("{}/{}", 0, targetPaths.size()));
-    bar.setPrefixText("[FaceSwapper] Process images");
+    bar.setPrefixText("[FaceSwapper] Process images");*/
     int i = 0;
     static bool isAllWriteSuccess = true;
+    //m_logger->info("start processing...");
     while (true) {
         if (writeImageResults.size() <= i) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -125,9 +126,9 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
                 m_logger->error(std::format("[FaceSwapper] Failed to process or write image: {}", outputPaths[i]));
             }
 
-            bar.setPostfixText(std::format("{}/{}", (i + 1), numTargetPaths));
+            //bar.setPostfixText(std::format("{}/{}", (i + 1), numTargetPaths));
             int progress = static_cast<int>(std::round(((i + 1) * 100.0f) / numTargetPaths));
-            bar.setProgress(progress);
+            //bar.setProgress(progress);
             
             ++i;
             if (i >= outputPaths.size()) {
@@ -135,7 +136,8 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
             }
         }
     }
-    show_console_cursor(true);
+    //m_logger->info("end of processing!");
+    //show_console_cursor(true);
     if(!isAllWriteSuccess) {
         m_logger->error("[FaceSwapper] Some images failed to process or write.");
     }
