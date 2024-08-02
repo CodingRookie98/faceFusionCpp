@@ -14,8 +14,10 @@ endif ()
 set(ProgramName "faceFusion")
 add_executable(${ProgramName})
 
+include("./cmake/onnxruntime-gpu.cmake")
+
 add_subdirectory(facefusionCpp)
-set (ONNXRUNTIME "C:/devTools/cppPackage/onnxruntime-win-x64-gpu-1.17.3")
+set(ONNXRUNTIME "${CMAKE_BINARY_DIR}/onnxruntime-win-x64-gpu-1.18.1")
 
 find_package(OpenCV REQUIRED)
 find_package(ONNX CONFIG REQUIRED)
@@ -40,3 +42,22 @@ target_link_libraries(${ProgramName} PRIVATE CURL::libcurl)
 target_link_libraries(${ProgramName} PRIVATE indicators::indicators)
 target_link_libraries(${ProgramName} PRIVATE OpenSSL::Crypto)
 target_link_libraries(${ProgramName} PRIVATE dp::thread-pool)
+
+# 设置打包的方式
+set(CPACK_GENERATOR ZIP)
+
+#set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/License.txt")
+set(CPACK_PACKAGE_VERSION_MAJOR "${faceFusionCpp_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${faceFusionCpp_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${faceFusionCpp_VERSION_PATCH}")
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
+set(CPACK_PACKAGE_FILE_NAME ${PROJECT_NAME}-${${PROJECT_NAME}_VERSION})
+
+install(TARGETS ${ProgramName} DESTINATION "./"
+        RUNTIME DESTINATION "./"
+)
+file(GLOB ONNXRUNTIME_DLLS "${ONNXRUNTIME}/lib/*.dll")
+install(FILES ${ONNXRUNTIME_DLLS} DESTINATION "./")
+
+include(InstallRequiredSystemLibraries)
+include(CPack)
