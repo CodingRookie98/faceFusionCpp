@@ -20,32 +20,19 @@ namespace Ffc {
 
 class ProgressBar {
 public:
-    ProgressBar() = default;
-    ~ProgressBar() = default;
-    
+    ProgressBar();
+    ~ProgressBar();
+
     void setMaxProgress(const int64_t &max);
-    void setPrefixText(const std::string& text);
-    void setPostfixText(const std::string& text);
+    void setPrefixText(const std::string &text);
+    void setPostfixText(const std::string &text);
     void setProgress(const int &progress);
     void tick();
     void markAsCompleted();
     static void showConsoleCursor(bool show);
-    
+
 private:
-    indicators::ProgressBar bar{
-        option::BarWidth{50},
-        option::MaxProgress{static_cast<int64_t>(0)},
-        option::Start{" ["},
-        option::Fill{"█"},
-        option::Lead{"█"},
-        option::Remainder{"-"},
-        option::End{"]"},
-        option::PrefixText{""},
-        option::ForegroundColor{Color::green},
-        option::ShowElapsedTime{true},
-        option::ShowRemainingTime{true},
-        option::ShowPercentage{true},
-        option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}};
+    indicators::ProgressBar *m_bar;
 };
 
 } // namespace Ffc

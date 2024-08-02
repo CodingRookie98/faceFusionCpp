@@ -369,9 +369,9 @@ void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePa
     ProgressBar bar;
     show_console_cursor(false);
     bar.setMaxProgress(100);
-    bar.setProgress(0);
-    bar.setPostfixText(std::format("{}/{}", 0, targetPaths.size()));
     bar.setPrefixText("[FaceEnhancer] Process images");
+    bar.setPostfixText(std::format("{}/{}", 0, targetPaths.size()));
+    bar.setProgress(0);
     int i = 0;
     static bool isAllWriteSuccess = true;
     while (true) {
@@ -381,8 +381,8 @@ void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePa
         } else {
             if (!writeImageResults[i].valid()) {
                 isAllWriteSuccess = false;
-                ++i;
                 m_logger->error(std::format("[FaceEnhancer] Failed to process image: {}", targetPaths[i]));
+                ++i;
                 continue;
             }
 
