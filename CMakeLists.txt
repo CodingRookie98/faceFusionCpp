@@ -12,9 +12,9 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif ()
 
 set(ProgramName "faceFusion")
-add_executable(${ProgramName} main.cpp)
+add_executable(${ProgramName})
 
-add_subdirectory(src)
+add_subdirectory(facefusionCpp)
 set (ONNXRUNTIME "C:/devTools/cppPackage/onnxruntime-win-x64-gpu-1.17.3")
 
 find_package(OpenCV REQUIRED)
