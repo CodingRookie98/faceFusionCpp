@@ -328,11 +328,11 @@ void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePa
                                  const std::vector<std::string> &outputPaths) {
     if (targetPaths.size() != outputPaths.size()) {
         m_logger->error("[FaceEnhancer] The number of target paths and output paths must be equal");
-        throw std::runtime_error("[FaceEnhancer] The number of target paths and output paths must be equal");
+        throw std::invalid_argument("[FaceEnhancer] The number of target paths and output paths must be equal");
     }
     if (targetPaths.empty()) {
         m_logger->error("[FaceEnhancer] No target paths provided!");
-        throw std::runtime_error("[FaceEnhancer] No target paths provided!");
+        return;
     }
 
     Typing::Faces referenceFaces;
@@ -382,14 +382,14 @@ void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePa
             if (!writeImageResults[i].valid()) {
                 isAllWriteSuccess = false;
                 ++i;
-                m_logger->error(std::format("[FaceEnhancer] Failed to process or write image: {}", outputPaths[i]));
+                m_logger->error(std::format("[FaceEnhancer] Failed to process image: {}", targetPaths[i]));
                 continue;
             }
 
             auto writeIsSuccess = writeImageResults[i].get();
             if (!writeIsSuccess) {
                 isAllWriteSuccess = false;
-                m_logger->error(std::format("[FaceEnhancer] Failed to process or write image: {}", outputPaths[i]));
+                m_logger->error(std::format("[FaceEnhancer] Failed to write image: {}", outputPaths[i]));
             }
 
             bar.setPostfixText(std::format("{}/{}", (i + 1), numTargetPaths));

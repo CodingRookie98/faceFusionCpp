@@ -54,16 +54,16 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
                                 const std::vector<std::string> &targetPaths,
                                 const std::vector<std::string> &outputPaths) {
     if (targetPaths.size() != outputPaths.size()) {
-        m_logger->error("[FaceSwapper] The number of target paths and output paths must be equal");
-        throw std::runtime_error("[FaceSwapper] The number of target paths and output paths must be equal");
+        m_logger->error("[FaceSwapper] The number of target paths and output paths must be equal!");
+        throw std::invalid_argument("[FaceSwapper] The number of target paths and output paths must be equal");
     }
     if (sourcePaths.empty()) {
-        m_logger->error("[FaceSwapper] No source paths provided");
-        throw std::runtime_error("[FaceSwapper] No source paths provided");
+        m_logger->error("[FaceSwapper] No source paths were provided, so face swapping was skipped.");
+        return;
     }
     if (targetPaths.empty()) {
-        m_logger->error("[FaceSwapper] No target paths provided");
-        throw std::runtime_error("[FaceSwapper] No target paths provided");
+        m_logger->error("[FaceSwapper] No target paths provided!");
+        return;
     }
 
     Typing::Faces referenceFaces;
@@ -115,14 +115,14 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
             if (!writeImageResults[i].valid()) {
                 isAllWriteSuccess = false;
                 ++i;
-                m_logger->error(std::format("[FaceSwapper] Failed to process or write image: {}", outputPaths[i]));
+                m_logger->error(std::format("[FaceSwapper] Failed to process image: {}", targetPaths[i]));
                 continue;
             }
             
             auto writeIsSuccess = writeImageResults[i].get();
             if (!writeIsSuccess) {
                 isAllWriteSuccess = false;
-                m_logger->error(std::format("[FaceSwapper] Failed to process or write image: {}", outputPaths[i]));
+                m_logger->error(std::format("[FaceSwapper] Failed to write image: {}", outputPaths[i]));
             }
 
             bar.setPostfixText(std::format("{}/{}", (i + 1), numTargetPaths));
