@@ -102,7 +102,7 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
     ProgressBar bar;
     show_console_cursor(false);
     bar.setMaxProgress(100);
-    bar.setPrefixText("[FaceSwapper] Process images");
+    bar.setPrefixText("[FaceSwapper] Processing images");
     bar.setPostfixText(std::format("{}/{}", 0, targetPaths.size()));
     bar.setProgress(0);
     int i = 0;
