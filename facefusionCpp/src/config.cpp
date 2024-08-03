@@ -16,7 +16,8 @@ Config::Config(const std::string &configPath) {
         m_configPath = configPath;
         loadConfig();
     } else {
-        throw std::runtime_error("Config file not found");
+        m_logger->error(std::format("Config file not found: {}", FileSystem::resolveRelativePath("./facefusion.ini")));
+        std::exit(1);
     }
 }
 

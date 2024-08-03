@@ -20,6 +20,9 @@ Core::Core() {
     if (file.is_open()) {
         file >> *m_modelsInfoJson;
         file.close();
+    } else {
+        m_logger->error(std::format("Failed to open file: {}", FileSystem::resolveRelativePath("./modelsInfo.json")));
+        std::exit(EXIT_FAILURE);
     }
     m_faceAnalyser = std::make_shared<Ffc::FaceAnalyser>(m_env, m_modelsInfoJson, m_config);
     m_faceMasker = std::make_shared<Ffc::FaceMasker>(m_env, m_modelsInfoJson, m_config);
