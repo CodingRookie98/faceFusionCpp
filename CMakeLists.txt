@@ -43,6 +43,18 @@ target_link_libraries(${ProgramName} PRIVATE indicators::indicators)
 target_link_libraries(${ProgramName} PRIVATE OpenSSL::Crypto)
 target_link_libraries(${ProgramName} PRIVATE dp::thread-pool)
 
+list(APPEND RESOURCE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/facefusion.ini"
+        "${CMAKE_CURRENT_SOURCE_DIR}/facefusionCpp/modelsInfo.json"
+)
+
+add_custom_command(TARGET ${ProgramName} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${RESOURCE_FILES}
+        $<TARGET_FILE_DIR:${ProgramName}>
+        COMMENT "Copying resource files to runtime output directory"
+)
+
 # 设置打包的方式
 set(CPACK_GENERATOR ZIP)
 
@@ -53,11 +65,34 @@ set(CPACK_PACKAGE_VERSION_PATCH "${faceFusionCpp_VERSION_PATCH}")
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set(CPACK_PACKAGE_FILE_NAME ${PROJECT_NAME}-${${PROJECT_NAME}_VERSION})
 
-install(TARGETS ${ProgramName} DESTINATION "./"
-        RUNTIME DESTINATION "./"
+set(INSTALL_PATH "./")
+set(X_VCPKG_APPLOCAL_DEPS_INSTALL TRUE CACHE BOOL "Automatically COPY dependencies into the install target directory for executables.")
+set(X_VCPKG_APPLOCAL_DEPS_SERIALIZED ON)
+
+install(TARGETS ${ProgramName} DESTINATION ${INSTALL_PATH}
+        RUNTIME LIBRARY ARCHIVE COMPONENT "app_exe" DESTINATION ${INSTALL_PATH}
 )
-file(GLOB ONNXRUNTIME_DLLS "${ONNXRUNTIME}/lib/*.dll")
-install(FILES ${ONNXRUNTIME_DLLS} DESTINATION "./")
+#file(GLOB ONNXRUNTIME_DLLS "${ONNXRUNTIME}/lib/*.dll")
+#install(FILES ${ONNXRUNTIME_DLLS} DESTINATION ${INSTALL_PATH})
+install(FILES $<TARGET_RUNTIME_DLLS:${ProgramName}>
+        COMPONENT "app_dll"
+        DESTINATION ${INSTALL_PATH}
+)
+install(FILES
+        ${RESOURCE_FILES}
+        DESTINATION ${INSTALL_PATH}
+)
+
+# Please configure cmake again after building the project
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    file(GLOB RUNTIME_FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG}/*.dll")
+elseif (${CMAKE_BUILD_TYPE} STREQUAL "Release")
+    file(GLOB RUNTIME_FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE}/*.dll")
+endif ()
+install(FILES
+        ${RUNTIME_FILES}
+        DESTINATION ${INSTALL_PATH}
+)
 
 include(InstallRequiredSystemLibraries)
 include(CPack)
