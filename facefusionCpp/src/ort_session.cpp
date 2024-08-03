@@ -12,6 +12,8 @@
 
 namespace Ffc {
 OrtSession::OrtSession(const std::shared_ptr<Ort::Env> &env) {
+    printOnnxruntimeVersion();
+    
     m_env = env;
     m_sessionOptions = Ort::SessionOptions();
     m_sessionOptions.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
@@ -24,6 +26,13 @@ OrtSession::OrtSession(const std::shared_ptr<Ort::Env> &env) {
     if (m_config->m_executionProviders.contains(Typing::EnumExecutionProvider::EP_CUDA)) {
         appendProviderCUDA();
     }
+}
+
+void OrtSession::printOnnxruntimeVersion() {
+    static std::once_flag flag;
+    std::call_once(flag, [&]() {
+        m_logger->info(std::format("onnxruntime version: {}", Ort::GetVersionString()));
+    });
 }
 
 void OrtSession::createSession(const std::string &modelPath) {

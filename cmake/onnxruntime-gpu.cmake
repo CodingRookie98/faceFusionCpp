@@ -31,3 +31,12 @@ if (NOT EXISTS "${CMAKE_BINARY_DIR}/onnxruntime-win-x64-gpu-1.18.1/lib/onnxrunti
 else ()
     message(STATUS "onnxruntime-win-x64-gpu has already been extracted.")
 endif()
+
+FILE(GLOB ONNXRUNTIME_DLLS "${CMAKE_BINARY_DIR}/onnxruntime-win-x64-gpu-1.18.1/lib/*.dll")
+
+add_custom_command(TARGET ${ProgramName} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${ONNXRUNTIME_DLLS}
+        $<TARGET_FILE_DIR:${ProgramName}>
+    COMMENT "Copying ONNX Runtime DLLs to runtime output directory"
+)

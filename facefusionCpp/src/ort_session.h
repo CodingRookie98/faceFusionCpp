@@ -47,6 +47,7 @@ public:
 private:
     void appendProviderCUDA();
     void appendProviderTensorrt();
+    void printOnnxruntimeVersion();
 };
 
 } // namespace Ffc
