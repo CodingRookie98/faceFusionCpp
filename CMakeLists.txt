@@ -11,7 +11,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 endif ()
 
-set(ProgramName "faceFusion")
+set(ProgramName ${PROJECT_NAME})
 add_executable(${ProgramName})
 
 include("./cmake/onnxruntime-gpu.cmake")
@@ -44,7 +44,7 @@ target_link_libraries(${ProgramName} PRIVATE OpenSSL::Crypto)
 target_link_libraries(${ProgramName} PRIVATE dp::thread-pool)
 
 list(APPEND RESOURCE_FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/facefusion.ini"
+        "${CMAKE_CURRENT_SOURCE_DIR}/facefusionCpp.ini"
         "${CMAKE_CURRENT_SOURCE_DIR}/facefusionCpp/modelsInfo.json"
 )
 
@@ -63,7 +63,14 @@ set(CPACK_PACKAGE_VERSION_MAJOR "${faceFusionCpp_VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${faceFusionCpp_VERSION_MINOR}")
 set(CPACK_PACKAGE_VERSION_PATCH "${faceFusionCpp_VERSION_PATCH}")
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
-set(CPACK_PACKAGE_FILE_NAME ${PROJECT_NAME}-${${PROJECT_NAME}_VERSION})
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-win-x64-${${PROJECT_NAME}_VERSION}")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-linux-x64-${${PROJECT_NAME}_VERSION}")
+else ()
+    message(STATUS "The system is neither Windows nor Linux.")
+endif ()
 
 set(INSTALL_PATH "./")
 set(X_VCPKG_APPLOCAL_DEPS_INSTALL TRUE CACHE BOOL "Automatically COPY dependencies into the install target directory for executables.")
@@ -72,16 +79,12 @@ set(X_VCPKG_APPLOCAL_DEPS_SERIALIZED ON)
 install(TARGETS ${ProgramName} DESTINATION ${INSTALL_PATH}
         RUNTIME LIBRARY ARCHIVE COMPONENT "app_exe" DESTINATION ${INSTALL_PATH}
 )
-#file(GLOB ONNXRUNTIME_DLLS "${ONNXRUNTIME}/lib/*.dll")
-#install(FILES ${ONNXRUNTIME_DLLS} DESTINATION ${INSTALL_PATH})
+
 install(FILES $<TARGET_RUNTIME_DLLS:${ProgramName}>
         COMPONENT "app_dll"
         DESTINATION ${INSTALL_PATH}
 )
-install(FILES
-        ${RESOURCE_FILES}
-        DESTINATION ${INSTALL_PATH}
-)
+install(FILES ${RESOURCE_FILES} DESTINATION ${INSTALL_PATH})
 
 # Please configure cmake again after building the project
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -89,10 +92,7 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 elseif (${CMAKE_BUILD_TYPE} STREQUAL "Release")
     file(GLOB RUNTIME_FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE}/*.dll")
 endif ()
-install(FILES
-        ${RUNTIME_FILES}
-        DESTINATION ${INSTALL_PATH}
-)
+install(FILES ${RUNTIME_FILES} DESTINATION ${INSTALL_PATH})
 
 include(InstallRequiredSystemLibraries)
 include(CPack)
