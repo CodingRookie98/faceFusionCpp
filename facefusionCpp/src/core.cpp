@@ -13,7 +13,7 @@
 namespace Ffc {
 Core::Core() {
     m_env = std::make_shared<Ort::Env>(Ort::Env(ORT_LOGGING_LEVEL_ERROR, "faceFusionCpp"));
-    m_config = std::make_shared<Ffc::Config>("./facefusion.ini");
+    m_config = std::make_shared<Ffc::Config>("./faceFusionCpp.ini");
     m_logger = Logger::getInstance();
     m_modelsInfoJson = std::make_shared<nlohmann::json>();
     std::ifstream file("./modelsInfo.json");
@@ -52,6 +52,12 @@ void Core::forceDownload() {
 
 void Core::run() {
     m_logger->setLogLevel(m_config->m_logLevel);
+    auto removeTempFunc = []() {
+       FileSystem::removeDirectory(FileSystem::getTempPath());
+    };
+    if (std::atexit(removeTempFunc) != 0) {
+        m_logger->warn("Failed to register exit function");
+    }
 
     if (m_config->m_forceDownload) {
         this->forceDownload();
