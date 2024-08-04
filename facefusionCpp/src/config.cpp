@@ -395,6 +395,16 @@ void Config::faceAnalyser() {
     value = m_ini.GetValue("face_analyser", "face_detector_size", "640x640");
     if (!value.empty()) {
         m_faceDetectorSize = Vision::unpackResolution(value);
+        if (m_faceDetectorSize.width < 0) {
+            m_faceDetectorSize.width = 0;
+        } else if (m_faceDetectorSize.width > 1024) {
+            m_faceDetectorSize.width = 1024;
+        }
+        if (m_faceDetectorSize.height < 0) {
+            m_faceDetectorSize.height = 0;
+        } else if (m_faceDetectorSize.height > 1024) {
+            m_faceDetectorSize.height = 1024;
+        }
     } else {
         m_faceDetectorSize = cv::Size(640, 640);
     }
