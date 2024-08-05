@@ -44,7 +44,7 @@ target_link_libraries(${ProgramName} PRIVATE OpenSSL::Crypto)
 target_link_libraries(${ProgramName} PRIVATE dp::thread-pool)
 
 list(APPEND RESOURCE_FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/facefusionCpp.ini"
+        "${CMAKE_CURRENT_SOURCE_DIR}/faceFusionCpp.ini"
         "${CMAKE_CURRENT_SOURCE_DIR}/facefusionCpp/modelsInfo.json"
 )
 
@@ -58,7 +58,7 @@ add_custom_command(TARGET ${ProgramName} POST_BUILD
 # 设置打包的方式
 set(CPACK_GENERATOR ZIP)
 
-#set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/License.txt")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_VERSION_MAJOR "${faceFusionCpp_VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${faceFusionCpp_VERSION_MINOR}")
 set(CPACK_PACKAGE_VERSION_PATCH "${faceFusionCpp_VERSION_PATCH}")
@@ -85,6 +85,11 @@ install(FILES $<TARGET_RUNTIME_DLLS:${ProgramName}>
         DESTINATION ${INSTALL_PATH}
 )
 install(FILES ${RESOURCE_FILES} DESTINATION ${INSTALL_PATH})
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
+        "${CMAKE_CURRENT_SOURCE_DIR}/DOCUMENT.md"
+        "${CMAKE_CURRENT_SOURCE_DIR}/DISCLAIMER.txt"
+        DESTINATION ${INSTALL_PATH}
+)
 
 # Please configure cmake again after building the project
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
