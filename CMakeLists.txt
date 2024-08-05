@@ -48,12 +48,13 @@ list(APPEND RESOURCE_FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/facefusionCpp/modelsInfo.json"
 )
 
-add_custom_command(TARGET ${ProgramName} POST_BUILD
+add_custom_target(COPY_RESOURCE_FILES
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${RESOURCE_FILES}
         $<TARGET_FILE_DIR:${ProgramName}>
         COMMENT "Copying resource files to runtime output directory"
 )
+add_dependencies(${ProgramName} COPY_RESOURCE_FILES)
 
 # 设置打包的方式
 set(CPACK_GENERATOR ZIP)
