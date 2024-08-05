@@ -1,3 +1,5 @@
+[[中文]](https://github.com/CodingRookie98/faceFusionCpp/blob/master/README_CN.md)
+
 ## FaceFusionCpp
 
 > This project is a C++ implementation of the open-source project [facefusion](https://github.com/facefusion/facefusion).
@@ -28,4 +30,4 @@ Additional environment requirements:
 
 ## Documentation
 
-Refer to this [documentation]() for more details on how to use the features.
+Refer to this [DOCUMENT](https://github.com/CodingRookie98/faceFusionCpp/blob/master/DOCUMENT.md) for more details on how to use the features.

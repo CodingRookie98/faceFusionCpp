@@ -28,4 +28,4 @@
 
 ## 文档
 
-阅读此[文档]()以获得更多功能使用。
+阅读此[文档](https://github.com/CodingRookie98/faceFusionCpp/blob/master/DOCUMENT.md)以获得更多功能使用。
