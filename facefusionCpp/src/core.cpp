@@ -13,7 +13,7 @@
 namespace Ffc {
 Core::Core() {
     m_env = std::make_shared<Ort::Env>(Ort::Env(ORT_LOGGING_LEVEL_ERROR, "faceFusionCpp"));
-    m_config = std::make_shared<Ffc::Config>("./faceFusionCpp.ini");
+    m_config = Config::getInstance();
     m_logger = Logger::getInstance();
     m_modelsInfoJson = std::make_shared<nlohmann::json>();
     std::ifstream file("./modelsInfo.json");

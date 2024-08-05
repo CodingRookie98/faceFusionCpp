@@ -16,7 +16,7 @@ Config::Config(const std::string &configPath) {
         m_configPath = configPath;
         loadConfig();
     } else {
-        m_logger->error(std::format("Config file not found: {}", FileSystem::resolveRelativePath("./facefusion.ini")));
+        m_logger->error(std::format("Config file not found: {}", FileSystem::resolveRelativePath(configPath)));
         std::exit(1);
     }
 }
@@ -542,7 +542,7 @@ void Config::misc() {
 std::shared_ptr<Config> Config::getInstance(const std::string &configPath) {
     static std::shared_ptr<Config> instance;
     static std::once_flag flag;
-    std::call_once(flag, [&]() { instance = std::make_shared<Config>(); });
+    std::call_once(flag, [&]() { instance = std::make_shared<Config>(configPath); });
     return instance;
 }
 

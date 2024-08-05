@@ -26,14 +26,14 @@ namespace Ffc {
 
 class Config {
 public:
-    explicit Config(const std::string &configPath = "./facefusion.ini");
+    explicit Config(const std::string &configPath = "./faceFusionCpp.ini");
     ~Config() = default;
     Config(const Config &) = delete;
     Config &operator=(const Config &) = delete;
     Config(Config &&) = delete;
     Config &operator=(Config &&) = delete;
 
-    static std::shared_ptr<Config> getInstance(const std::string &configPath = "./facefusion.ini");
+    static std::shared_ptr<Config> getInstance(const std::string &configPath = "./faceFusionCpp.ini");
 
     // general
     std::unordered_set<std::string> m_sourcePaths;
