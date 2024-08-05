@@ -198,7 +198,7 @@ Example: 0.7
 Use reference based tracking or simple matching.
 
 ```
-Default: reference
+Default: many
 Choices: many one reference
 Example: --face-selector-mode one
 ```

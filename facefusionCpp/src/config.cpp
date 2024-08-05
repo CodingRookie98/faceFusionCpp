@@ -262,10 +262,10 @@ void Config::faceSelector() {
             m_faceSelectorMode = Typing::EnumFaceSelectorMode::FS_Many;
         } else {
             m_logger->warn("[Config] Invalid face selector mode: " + value + " Use default: reference");
-            m_faceSelectorMode = Typing::EnumFaceSelectorMode::FS_Reference;
+            m_faceSelectorMode = Typing::EnumFaceSelectorMode::FS_Many;
         }
     } else {
-        m_faceSelectorMode = Typing::EnumFaceSelectorMode::FS_Reference;
+        m_faceSelectorMode = Typing::EnumFaceSelectorMode::FS_Many;
     }
 
     value = m_ini.GetValue("face_selector", "face_selector_order", "left-right");
