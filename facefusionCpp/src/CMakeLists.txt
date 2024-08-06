@@ -25,11 +25,5 @@ target_sources(${ProgramName} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/progress_bar.h
 )
 
-set(CUDA_DIR "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2")
-target_include_directories(${ProgramName} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CUDA_DIR}/include
-)
-
 add_subdirectory(face_analyser)
 add_subdirectory(processors)
