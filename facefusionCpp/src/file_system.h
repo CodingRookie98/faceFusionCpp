@@ -48,6 +48,8 @@ public:
     static void moveFiles(const std::vector<std::string> &sources, const std::vector<std::string> &destination);
     static std::string getTempPath();
     static std::string getFileName(const std::string &filePath);
+    static std::string getExtension(const std::string &filePath);
+    static std::string getBaseName(const std::string &filePath);
     static bool copyImageToTemp(const std::string &imagePath, const cv::Size &size = cv::Size(0, 0));
     // use multi-threading to copy images to temp
     static bool copyImagesToTemp(const std::vector<std::string> &imagePaths, const cv::Size &size = cv::Size(0, 0));

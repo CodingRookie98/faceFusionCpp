@@ -160,6 +160,16 @@ std::string FileSystem::getFileName(const std::string &filePath) {
     return pathObj.filename().string();
 }
 
+std::string FileSystem::getExtension(const std::string &filePath) {
+    std::filesystem::path pathObj(filePath);
+    return pathObj.extension().string();
+}
+
+std::string FileSystem::getBaseName(const std::string &filePath) {
+    std::filesystem::path pathObj(filePath);
+    return pathObj.stem().string();
+}
+
 bool FileSystem::copyImageToTemp(const std::string &imagePath, const cv::Size &size) {
     // 读取输入图片
     cv::Mat inputImage = cv::imread(imagePath, cv::IMREAD_UNCHANGED);
