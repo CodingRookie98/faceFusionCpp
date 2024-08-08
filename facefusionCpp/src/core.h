@@ -31,7 +31,7 @@ public:
     void run();
     void conditionalProcess();
     bool preCheck() const;
-    void processImages(const std::chrono::time_point<std::chrono::steady_clock> &startTime);
+    void processImages(std::unordered_set<std::string> imagePaths);
     void processImage(const std::string &imagePath,
                       const std::chrono::time_point<std::chrono::steady_clock> &startTime);
 

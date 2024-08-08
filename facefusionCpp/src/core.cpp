@@ -83,9 +83,13 @@ void Core::conditionalProcess() {
         }
         processor->preProcess({"output"});
     }
+    
     conditionalAppendReferenceFaces();
-    if (FileSystem::hasImage(m_config->m_targetPaths)) {
-        processImages(startTime);
+    
+    std::unordered_set<std::string> targetImagePaths = FileSystem::filterImagePaths(m_config->m_targetPaths);
+    if (!targetImagePaths.empty()) {
+        processImages(targetImagePaths);
+    }
     }
 }
 
