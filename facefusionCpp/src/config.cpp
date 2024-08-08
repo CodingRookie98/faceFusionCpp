@@ -559,15 +559,20 @@ void Config::execution() {
 
     value = m_ini.GetValue("execution", "execution_providers", "cpu");
     if (!value.empty()) {
+        bool flag = false;
         if (value.find("cpu") != std::string::npos) {
             m_executionProviders.insert(Typing::EnumExecutionProvider::EP_CPU);
+            flag = true;
         }
         if (value.find("cuda") != std::string::npos) {
             m_executionProviders.insert(Typing::EnumExecutionProvider::EP_CUDA);
+            flag = true;
         }
         if (value.find("tensorrt") != std::string::npos) {
             m_executionProviders.insert(Typing::EnumExecutionProvider::EP_TensorRT);
-        } else {
+            flag = true;
+        }
+        if (!flag){
             m_logger->warn("[Config] Invalid execution_providers: " + value + " Use default: cpu");
             m_executionProviders.insert(Typing::EnumExecutionProvider::EP_CPU);
         }
