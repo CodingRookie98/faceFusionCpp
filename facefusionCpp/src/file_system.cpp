@@ -305,11 +305,19 @@ bool FileSystem::finalizeImages(const std::vector<std::string> &imagePaths, cons
 }
 
 void FileSystem::removeDirectory(const std::string &path) {
-    std::filesystem::remove_all(path);
+    try {
+        std::filesystem::remove_all(path);
+    } catch (const std::filesystem::filesystem_error &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
 void FileSystem::removeFile(const std::string &path) {
-    std::filesystem::remove(path);
+    try {
+        std::filesystem::remove(path);
+    } catch (const std::filesystem::filesystem_error &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
 void FileSystem::copyFile(const std::string &source, const std::string &destination) {
