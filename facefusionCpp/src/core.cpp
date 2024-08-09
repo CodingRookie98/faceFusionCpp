@@ -192,7 +192,7 @@ void Core::processImages(std::unordered_set<std::string> imagePaths) {
     }
     std::string outputPath = FileSystem::resolveRelativePath(m_config->m_outputPath);
     
-    if (!FileSystem::directoryExists(outputPath) && targetImagePaths.size() > 1) {
+    if (!FileSystem::directoryExists(outputPath)) {
         m_logger->info("[Core] Create output directory: " + outputPath);
         FileSystem::createDirectory(outputPath);
     }
