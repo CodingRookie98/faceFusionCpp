@@ -53,7 +53,7 @@ void Core::forceDownload() {
 void Core::run() {
     m_logger->setLogLevel(m_config->m_logLevel);
     auto removeTempFunc = []() {
-       FileSystem::removeDirectory(FileSystem::getTempPath());
+        FileSystem::removeDirectory(FileSystem::getTempPath());
     };
     if (std::atexit(removeTempFunc) != 0) {
         m_logger->warn("Failed to register exit function");
@@ -83,14 +83,20 @@ void Core::conditionalProcess() {
         }
         processor->preProcess({"output"});
     }
-    
+
     conditionalAppendReferenceFaces();
-    
+
     std::unordered_set<std::string> targetImagePaths = FileSystem::filterImagePaths(m_config->m_targetPaths);
     if (!targetImagePaths.empty()) {
         processImages(targetImagePaths);
     }
+
+    if (targetImagePaths.size() == m_config->m_targetPaths.size()) {
+        return;
     }
+    }
+    
+    FileSystem::removeDirectory(FileSystem::getTempPath());
 }
 
 void Core::createFrameProcessors() {
@@ -162,11 +168,9 @@ void Core::conditionalAppendReferenceFaces() {
     }
 }
 
-void Core::processImages(const std::chrono::time_point<std::chrono::steady_clock> &startTime) {
-    auto targetImagePathsSet = FileSystem::filterImagePaths(m_config->m_targetPaths);
-    std::vector<std::string> targetImagePaths(targetImagePathsSet.begin(), targetImagePathsSet.end());
+void Core::processImages(std::unordered_set<std::string> imagePaths) {
+    std::vector<std::string> targetImagePaths(imagePaths.begin(), imagePaths.end());
     std::vector<std::string> normedOutputPaths;
-    targetImagePathsSet.clear();
 
     std::string tempPath = FileSystem::getTempPath();
 
@@ -200,7 +204,6 @@ void Core::processImages(const std::chrono::time_point<std::chrono::steady_clock
     m_logger->info("[Core] Moving processed images to output path...");
     FileSystem::moveFiles(tempTargetImagePaths, normedOutputPaths);
 
-    FileSystem::removeDirectory(FileSystem::getTempPath());
     m_logger->info(std::format("[Core] All images processed successfully. Output path: {}", FileSystem::resolveRelativePath(m_config->m_outputPath)));
 }
 
