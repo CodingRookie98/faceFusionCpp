@@ -159,11 +159,11 @@ void FfmpegRunner::extractAudios(const std::string &videoPath, const std::string
     auto audioStreamsInfo = getAudioStreamsIndexAndCodec(videoPath);
 
     for (const auto &audioStreamInfo : audioStreamsInfo) {
-        std::string index = std::to_string(audioStreamInfo.first - 1);
-        std::string command = "ffmpeg -v error -i " + videoPath + " -map 0:a:" + index + " -c:a " + audioCodecStr + " -vn -y " + outputDir + "/audio_" + index + extension;
+        std::string index = std::to_string(audioStreamInfo.first);
+        std::string command = "ffmpeg -v error -i " + videoPath + " -map 0:" + index + " -c:a " + audioCodecStr + " -vn -y " + outputDir + "/audio_" + index + extension;
         std::vector<std::string> results = childProcess(command);
         if (!results.empty()) {
-            Logger::getInstance()->error("Failed to extract audio : " + command);
+            Logger::getInstance()->error(std::format("{} Failed to extract audio : {}", __FUNCTION__, command));
         }
     }
 }
