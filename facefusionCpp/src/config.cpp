@@ -431,38 +431,38 @@ void Config::faceAnalyser() {
 
 void Config::general() {
     // general
-    std::string value = m_ini.GetValue("general", "source_dir_or_path", "");
+    std::string value = m_ini.GetValue("general", "source_path", "");
     if (!value.empty()) {
-        if (FileSystem::fileExists(value) && FileSystem::isFile(value) && FileSystem::isImage(value)) {
+        if (FileSystem::fileExists(value) && FileSystem::isFile(value)) {
             m_sourcePaths.insert(value);
         } else if (FileSystem::isDirectory(value)) {
             m_sourcePaths = FileSystem::listFilesInDirectory(value);
             if (m_sourcePaths.empty()) {
-                m_logger->warn("[Config] source_dir_or_path is an empty directory.");
+                m_logger->warn("[Config] source_path is an empty directory.");
             } else {
                 m_sourcePaths = FileSystem::filterImagePaths(m_sourcePaths);
                 if (m_sourcePaths.empty()) {
-                    m_logger->warn("[Config] source_dir_or_path does not contain any valid image files.");
+                    m_logger->warn("[Config] source_path does not contain any valid image files.");
                 }
             }
         } else {
-            m_logger->warn("[Config] source_dir_or_path is not a valid path or directory.");
+            m_logger->warn("[Config] source_path is not a valid path or directory.");
         }
     } else {
-        m_logger->warn("[Config] source_dir_or_path is not set.");
+        m_logger->warn("[Config] source_path is not set.");
     }
-    value = m_ini.GetValue("general", "target_dir_or_path", "");
+    value = m_ini.GetValue("general", "target_path", "");
     if (!value.empty()) {
         if (FileSystem::fileExists(value) && FileSystem::isFile(value)) {
             m_targetPaths.insert(value);
         } else if (FileSystem::isDirectory(value)) {
             m_targetPaths = FileSystem::listFilesInDirectory(value);
         } else {
-            m_logger->error("[Config] target_dir_or_path is not a valid path or directory.");
+            m_logger->error("[Config] target_path is not a valid path or directory.");
             std::exit(1);
         }
     } else {
-        m_logger->error("[Config] target_dir_or_path is not set.");
+        m_logger->error("[Config] target_path is not set.");
         std::exit(1);
     }
 
@@ -478,12 +478,12 @@ void Config::general() {
         m_referenceFacePath = "";
     }
 
-    value = m_ini.GetValue("general", "output_dir_or_path", "./output");
+    value = m_ini.GetValue("general", "output_path", "./output");
     if (!value.empty()) {
         m_outputPath = FileSystem::resolveRelativePath(value);
     } else {
         m_outputPath = FileSystem::resolveRelativePath("./output");
-        m_logger->warn("[Config] output_dir_or_path is not set. Use default: ./output");
+        m_logger->warn("[Config] output_path is not set. Use default: ./output");
     }
 }
 
