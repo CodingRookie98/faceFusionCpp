@@ -76,7 +76,6 @@ void Core::run() {
 }
 
 void Core::conditionalProcess() {
-    auto startTime = std::chrono::steady_clock::now();
     for (const auto &processor : *getFrameProcessors()) {
         while (!processor->postCheck()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -85,7 +84,8 @@ void Core::conditionalProcess() {
     }
 
     conditionalAppendReferenceFaces();
-
+    
+    m_logger->info("[Core] Filtering images...");
     std::unordered_set<std::string> targetImagePaths = FileSystem::filterImagePaths(m_config->m_targetPaths);
     if (!targetImagePaths.empty()) {
         processImages(targetImagePaths);
@@ -100,7 +100,7 @@ void Core::conditionalProcess() {
     if (!targetVideoPaths.empty()) {
         processVideos(targetVideoPaths);
     }
-    
+
     FileSystem::removeDirectory(FileSystem::getTempPath());
 }
 
@@ -191,12 +191,12 @@ void Core::processImages(std::unordered_set<std::string> imagePaths) {
         tempTargetImagePaths.emplace_back(tempTargetImagePath);
     }
     std::string outputPath = FileSystem::resolveRelativePath(m_config->m_outputPath);
-    
+
     if (!FileSystem::directoryExists(outputPath)) {
         m_logger->info("[Core] Create output directory: " + outputPath);
         FileSystem::createDirectory(outputPath);
     }
-    
+
     normedOutputPaths = FileSystem::normalizeOutputPaths(tempTargetImagePaths, outputPath);
     targetImagePaths.clear();
 
@@ -303,7 +303,7 @@ bool Core::processVideo(const std::string &videoPath, const std::string &outputV
         videoInfoJsonFile >> videoInfoJson;
     }
     videoInfoJsonFile.close();
-    
+
     Ffc::FfmpegRunner::VideoPrams videoPrams;
     videoPrams.setPramsFromJson(videoInfoJson);
     videoPrams.quality = m_config->m_outputVideoQuality;
@@ -324,7 +324,7 @@ bool Core::processVideo(const std::string &videoPath, const std::string &outputV
     std::unordered_set<std::string> audioPaths = Ffc::FileSystem::listFilesInDirectory(audiosDir);
     audioPaths = Ffc::FfmpegRunner::filterAudioPaths(audioPaths);
     std::vector<std::string> audioPathsVec(audioPaths.begin(), audioPaths.end());
-    
+
     Ffc::Logger::getInstance()->info("[Core] Add audios to video ...");
     if (!Ffc::FfmpegRunner::addAudiosToVideo(outputVideo_NA_Path, audioPathsVec, outputVideoPath)) {
         Ffc::Logger::getInstance()->warn("[Core] Add audios to Video failed. The output video will be without audio.");
