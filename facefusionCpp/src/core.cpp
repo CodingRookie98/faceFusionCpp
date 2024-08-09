@@ -292,7 +292,7 @@ bool Core::processVideo(const std::string &videoPath, const std::string &outputV
     }
 
     std::string videoInfoJsonPath = pathVideo.parent_path().string() + "/" + Ffc::FileSystem::getBaseName(videoPath) + ".json";
-    if (!Ffc::FfmpegRunner::getVideoInfoJson(videoPath, videoInfoJsonPath)) {
+    if (!Ffc::FfmpegRunner::getVideoInfoJsonFile(videoPath, videoInfoJsonPath)) {
         Ffc::Logger::getInstance()->error(std::format("[Core] Failed to get file: {}", videoInfoJsonPath));
         FileSystem::removeDirectory(videoFramesOutputDir);
         return false;

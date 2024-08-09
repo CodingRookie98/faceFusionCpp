@@ -368,41 +368,49 @@ std::string FfmpegRunner::map_amf_preset(const std::string &preset) {
     }
 }
 
-bool FfmpegRunner::getVideoInfoJson(const std::string &videoPath, std::string &videoInfoJsonPath) {
+bool FfmpegRunner::getVideoInfoJsonFile(const std::string &videoPath, std::string &videoInfoJsonFilePath) {
     if (!isVideo(videoPath)) {
         Logger::getInstance()->error("Not a video file : " + videoPath);
         return false;
     }
-    if (bp::filesystem::is_directory(videoInfoJsonPath)) {
-        Logger::getInstance()->error("Output path is a directory : " + videoInfoJsonPath);
+    if (bp::filesystem::is_directory(videoInfoJsonFilePath)) {
+        Logger::getInstance()->error("Output path is a directory : " + videoInfoJsonFilePath);
         return false;
     }
-    if (bp::filesystem::exists(videoInfoJsonPath) && bp::filesystem::is_regular_file(videoInfoJsonPath)) {
-        bp::filesystem::remove(videoInfoJsonPath);
+    if (bp::filesystem::exists(videoInfoJsonFilePath) && bp::filesystem::is_regular_file(videoInfoJsonFilePath)) {
+        bp::filesystem::remove(videoInfoJsonFilePath);
     }
 
+    std::string jsonInfo = getVideoInfoJson(videoPath);
+    if (!jsonInfo.empty()) {
+        // write results to videoInfoJsonFilePath
+        std::ofstream videoInfoJson(videoInfoJsonFilePath);
+        if (!videoInfoJson.is_open()) {
+            Logger::getInstance()->error(std::format("{} : Failed to open file : {}", __FUNCTION__, videoInfoJsonFilePath));
+            return false;
+        }
+        videoInfoJson << jsonInfo;
+        videoInfoJson.close();
+    } else {
+        Logger::getInstance()->error(std::format("{} : jsonInfo is empty.", __FUNCTION__));
+        return false;
+    }
+    return true;
+}
+
+std::string FfmpegRunner::getVideoInfoJson(const std::string &videoPath) {
     std::string command = "ffprobe -v error -print_format json -show_format -show_streams -i " + videoPath;
     std::vector<std::string> results = childProcess(command);
     if (!results.empty()) {
         if (results[0] != "{") {
             std::string error = std::accumulate(results.begin(), results.end(), std::string());
             Logger::getInstance()->error(error);
-            Logger::getInstance()->error(std::format("{} : Failed to save video info json : {}", __FUNCTION__, command));
-            return false;
+            Logger::getInstance()->error(std::format("{} : Failed to get video info json : {}", __FUNCTION__, command));
+            return {};
         }
-
-        // write results to videoInfoJsonPath
-        std::ofstream videoInfoJson(videoInfoJsonPath);
-        if (!videoInfoJson.is_open()) {
-            Logger::getInstance()->error(std::format("{} : Failed to save video info json : {}", __FUNCTION__, command));
-            return false;
-        }
-        for (const auto &result : results) {
-            videoInfoJson << result;
-        }
-        videoInfoJson.close();
+        return std::accumulate(results.begin(), results.end(), std::string());
     }
-    return true;
+    return {};
 }
 
 std::string FfmpegRunner::getCompressionAndPresetCmd(const unsigned int &quality, const std::string &preset, const std::string &codec) {

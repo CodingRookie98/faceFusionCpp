@@ -67,7 +67,8 @@ public:
     static bool concatVideoSegments(const std::vector<std::string> &videoSegmentsPaths,
                                     const std::string &outputVideoPath, const VideoPrams &videoPrams);
 
-    static bool getVideoInfoJson(const std::string &videoPath, std::string &videoInfoJsonPath);
+    static bool getVideoInfoJsonFile(const std::string &videoPath, std::string &videoInfoJsonFilePath);
+    static std::string getVideoInfoJson(const std::string &videoPath);
 
     static std::unordered_map<int, std::string> getAudioStreamsIndexAndCodec(const std::string &videoPath);
 
