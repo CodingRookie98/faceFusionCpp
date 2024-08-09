@@ -23,6 +23,12 @@ target_sources(${ProgramName} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/face_store.h
         ${CMAKE_CURRENT_SOURCE_DIR}/progress_bar.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/progress_bar.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_runner.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_runner.h
+)
+
+target_include_directories(${ProgramName} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 add_subdirectory(face_analyser)

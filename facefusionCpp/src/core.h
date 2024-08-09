@@ -14,6 +14,7 @@
 #include <nlohmann/json.hpp>
 #include <onnxruntime_cxx_api.h>
 #include <chrono>
+#include "ffmpeg_runner.h"
 #include "processors/frame/modules/face_swapper.h"
 #include "processors/frame/modules/face_enhancer.h"
 #include "face_analyser/face_analyser.h"
@@ -32,6 +33,7 @@ public:
     void conditionalProcess();
     bool preCheck() const;
     void processImages(std::unordered_set<std::string> imagePaths);
+    void processVideos(std::unordered_set<std::string> videoPaths);
 
 private:
     std::shared_ptr<Ffc::Config> m_config;
@@ -47,6 +49,8 @@ private:
     std::shared_ptr<std::vector<std::shared_ptr<ProcessorBase>>> getFrameProcessors();
     void forceDownload();
     void conditionalAppendReferenceFaces();
+    bool processVideo(const std::string &videoPath, const std::string &outputVideoPath);
+    bool processVideoInSegments(const std::string &videoPath, const std::string &outputVideoPath, const unsigned int &duration);
 };
 
 } // namespace Ffc

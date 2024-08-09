@@ -40,6 +40,7 @@ void Config::loadConfig() {
     faceSelector();
     faceMasker();
     outputCreation();
+    video();
     frameProcessors();
 
     if (m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Blendswap_256) {
@@ -572,7 +573,7 @@ void Config::execution() {
             m_executionProviders.insert(Typing::EnumExecutionProvider::EP_TensorRT);
             flag = true;
         }
-        if (!flag){
+        if (!flag) {
             m_logger->warn("[Config] Invalid execution_providers: " + value + " Use default: cpu");
             m_executionProviders.insert(Typing::EnumExecutionProvider::EP_CPU);
         }
@@ -630,6 +631,96 @@ void Config::memory() {
         }
     } else {
         m_perSessionGpuMemLimit = 0;
+    }
+}
+
+void Config::video() {
+    std::string value = m_ini.GetValue("video", "video_segment_duration", "0");
+    if (!value.empty()) {
+        m_videoSegmentDuration = std::stoi(value);
+        if (m_videoSegmentDuration < 0) {
+            m_videoSegmentDuration = 0;
+        }
+    } else {
+        m_videoSegmentDuration = 0;
+    }
+
+    value = m_ini.GetValue("video", "output_video_encoder", "libx264");
+    const std::unordered_set<std::string> encoders = {"libx264", "libx265", "libvpx-vp9", "h264_nvenc", "hevc_nvenc", "h264_amf", "hevc_amf"};
+    if (!value.empty()) {
+        if (encoders.contains(value)) {
+            m_outputVideoEncoder = value;
+        } else {
+            m_logger->warn("[Config] Invalid output_video_encoder: " + value + " Use default: libx264");
+            m_outputVideoEncoder = "libx264";
+        }
+    } else {
+        m_outputVideoEncoder = "libx264";
+    }
+
+    value = m_ini.GetValue("video", "output_video_preset", "veryfast");
+    const std::unordered_set<std::string> presets = {"ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"};
+    if (!value.empty()) {
+        if (presets.contains(value)) {
+            m_outputVideoPreset = value;
+        } else {
+            m_logger->warn("[Config] Invalid output_video_preset: " + value + " Use default: veryfast");
+            m_outputVideoPreset = "veryfast";
+        }
+    } else {
+        m_outputVideoPreset = "veryfast";
+    }
+
+    value = m_ini.GetValue("video", "output_video_quality", "80");
+    if (!value.empty()) {
+        m_outputVideoQuality = std::stoi(value);
+        if (m_outputVideoQuality < 0) {
+            m_outputVideoQuality = 0;
+        } else if (m_outputVideoQuality > 100) {
+            m_outputVideoQuality = 100;
+        }
+    } else {
+        m_outputVideoQuality = 80;
+    }
+
+    value = m_ini.GetValue("video", "output_audio_encoder", "aac");
+    const std::unordered_set<std::string> audioEncoders = {"aac", "libmp3lame", "libopus", "libvorbis"};
+    if (!value.empty()) {
+        if (audioEncoders.contains(value)) {
+            m_outputAudioEncoder = value;
+        } else {
+            m_logger->warn("[Config] Invalid output_audio_encoder: " + value + " Use default: aac");
+            m_outputAudioEncoder = "aac";
+        }
+    } else {
+        m_outputAudioEncoder = "aac";
+    }
+    
+    value = m_ini.GetValue("video", "skip_audio", "false");
+    if (!value.empty()) {
+        if (value == "true") {
+            m_skipAudio = true;
+        } else if (value == "false") {
+            m_skipAudio = false;
+        } else {
+            m_logger->warn("[Config] Invalid skip_audio: " + value + " Use default: false");
+            m_skipAudio = false;
+        }
+    } else {
+        m_skipAudio = false;
+    }
+    
+    value = m_ini.GetValue("video", "temp_frame_format", "png");
+    const std::unordered_set<std::string> formats = {"png", "jpg", "bmp"};
+    if (!value.empty()) {
+        if (formats.contains(value)) {
+            m_tempFrameFormat = value;
+        } else {
+            m_logger->warn("[Config] Invalid temp_frame_format: " + value + " Use default: png");
+            m_tempFrameFormat = "png";
+        }
+    } else {
+        m_tempFrameFormat = "png";
     }
 }
 

@@ -219,8 +219,122 @@ void Core::processImages(std::unordered_set<std::string> imagePaths) {
     m_logger->info(std::format("[Core] All images processed successfully. Output path: {}", FileSystem::resolveRelativePath(m_config->m_outputPath)));
 }
 
+void Core::processVideos(std::unordered_set<std::string> videoPaths) {
+    if (videoPaths.empty()) {
+        m_logger->warn("[Core] No video found in the source paths.");
         return;
     }
+    std::vector<std::string> targetVideoPaths(videoPaths.begin(), videoPaths.end());
+    std::vector<std::string> tempTargetVideoPaths;
+    for (const auto &targetVideoPath : targetVideoPaths) {
+        std::string tempTargetVideoDir = FileSystem::getTempPath() + "/" + FileSystem::getBaseName(targetVideoPath) + "-" + FileSystem::generateRandomString(8);
+        while (FileSystem::directoryExists(tempTargetVideoDir)) {}
+        std::string tempTargetVideoPath = tempTargetVideoDir + "/" + FileSystem::getFileName(targetVideoPath);
+        tempTargetVideoPaths.emplace_back(tempTargetVideoPath);
     }
+
+    m_logger->info("[Core] Coping videos to temp...");
+    FileSystem::copyFiles(targetVideoPaths, tempTargetVideoPaths);
+
+    std::string outputPath = FileSystem::resolveRelativePath(m_config->m_outputPath);
+    if (!FileSystem::directoryExists(outputPath)) {
+        m_logger->info("[Core] Create output directory: " + outputPath);
+        FileSystem::createDirectory(outputPath);
+    }
+    std::vector<std::string> normedOutputPaths = FileSystem::normalizeOutputPaths(tempTargetVideoPaths, m_config->m_outputPath);
+
+    for (size_t i = 0; i < targetVideoPaths.size(); ++i) {
+        if (m_config->m_videoSegmentDuration > 0) {
+            if (!processVideoInSegments(tempTargetVideoPaths[i], normedOutputPaths[i], m_config->m_videoSegmentDuration)) {
+                m_logger->error(std::format("[Core] Process video {}/{} in segments failed : {}", i + 1, targetVideoPaths.size(), targetVideoPaths[i]));
+            } else {
+                m_logger->info(std::format("[Core] Process video {}/{} in segments successfully. Output path: {}", i + 1, targetVideoPaths.size(), normedOutputPaths[i]));
+            }
+        } else {
+            if (!processVideo(tempTargetVideoPaths[i], normedOutputPaths[i])) {
+                m_logger->error(std::format("[Core] Process video failed : {}", targetVideoPaths[i]));
+            } else {
+                m_logger->info(std::format("[Core] Process video {}/{} successfully. Output path: {}", i + 1, targetVideoPaths.size(), normedOutputPaths[i]));
+            }
+        }
+    }
+}
+
+bool Core::processVideo(const std::string &videoPath, const std::string &outputVideoPath) {
+    std::filesystem::path pathVideo(videoPath);
+
+    std::string audiosDir = pathVideo.parent_path().string() + "/audios";
+    if (!m_config->m_skipAudio) {
+        FfmpegRunner::Audio_Codec audioCodec = FfmpegRunner::getAudioCodec(m_config->m_outputAudioEncoder);
+        if (audioCodec == FfmpegRunner::Audio_Codec::Codec_UNKNOWN) {
+            m_logger->warn("[Core] Unsupported audio codec. Use Default: aac");
+            audioCodec = FfmpegRunner::Audio_Codec::Codec_AAC;
+        }
+        m_logger->info(std::format("[Core] Extract Audios for {}", videoPath));
+        FfmpegRunner::extractAudios(videoPath, audiosDir, audioCodec);
+    }
+
+    m_logger->info(std::format("[Core] Extract Frames for {}", videoPath));
+    std::string pattern = "frame_%06d." + m_config->m_tempFrameFormat;
+    std::string videoFramesOutputDir = pathVideo.parent_path().string() + "/" + Ffc::FileSystem::getBaseName(videoPath);
+    std::string outputPattern = videoFramesOutputDir + "/" + pattern;
+    Ffc::FfmpegRunner::extractFrames(videoPath, outputPattern);
+    std::unordered_set<std::string> framePaths = FileSystem::listFilesInDirectory(videoFramesOutputDir);
+    framePaths = Ffc::FileSystem::filterImagePaths(framePaths);
+    std::vector<std::string> framePathsVec(framePaths.begin(), framePaths.end());
+
+    auto processors = getFrameProcessors();
+    for (auto processor = processors->begin(); processor != processors->end();) {
+        (*processor)->processImages(m_config->m_sourcePaths, framePathsVec, framePathsVec);
+        processor = processors->erase(processor);
+        m_faceStore->clearStaticFaces();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // Don't remove this line, it will cause a bug
+    }
+
+    std::string videoInfoJsonPath = pathVideo.parent_path().string() + "/" + Ffc::FileSystem::getBaseName(videoPath) + ".json";
+    if (!Ffc::FfmpegRunner::getVideoInfoJson(videoPath, videoInfoJsonPath)) {
+        Ffc::Logger::getInstance()->error(std::format("[Core] Failed to get file: {}", videoInfoJsonPath));
+        FileSystem::removeDirectory(videoFramesOutputDir);
+        return false;
+    }
+    nlohmann::json videoInfoJson;
+    std::ifstream videoInfoJsonFile(videoInfoJsonPath);
+    if (videoInfoJsonFile.is_open()) {
+        videoInfoJsonFile >> videoInfoJson;
+    }
+    videoInfoJsonFile.close();
+    
+    Ffc::FfmpegRunner::VideoPrams videoPrams;
+    videoPrams.setPramsFromJson(videoInfoJson);
+    videoPrams.quality = m_config->m_outputVideoQuality;
+    videoPrams.preset = m_config->m_outputVideoPreset;
+    videoPrams.videoCodec = m_config->m_outputVideoEncoder;
+
+    std::string inputImagePattern = videoFramesOutputDir + "/" + pattern;
+    std::string outputVideo_NA_Path = pathVideo.parent_path().string() + "/" + Ffc::FileSystem::getBaseName(videoPath) + "_processed_NA" + Ffc::FileSystem::getExtension(videoPath);
+    Ffc::Logger::getInstance()->info("[Core] Images to video...");
+    if (!Ffc::FfmpegRunner::imagesToVideo(inputImagePattern, outputVideo_NA_Path, videoPrams)) {
+        Ffc::Logger::getInstance()->error("[Core] images to video failed!");
+        FileSystem::removeDirectory(videoFramesOutputDir);
+        FileSystem::removeFile(videoInfoJsonPath);
+        FileSystem::removeFile(outputVideo_NA_Path);
+        return false;
+    }
+
+    std::unordered_set<std::string> audioPaths = Ffc::FileSystem::listFilesInDirectory(audiosDir);
+    audioPaths = Ffc::FfmpegRunner::filterAudioPaths(audioPaths);
+    std::vector<std::string> audioPathsVec(audioPaths.begin(), audioPaths.end());
+    
+    Ffc::Logger::getInstance()->info("[Core] Add audios to video ...");
+    if (!Ffc::FfmpegRunner::addAudiosToVideo(outputVideo_NA_Path, audioPathsVec, outputVideoPath)) {
+        Ffc::Logger::getInstance()->warn("[Core] Add audios to Video failed. The output video will be without audio.");
+    }
+
+    Ffc::FileSystem::removeFile(videoInfoJsonPath);
+    Ffc::FileSystem::removeDirectory(videoFramesOutputDir);
+    Ffc::FileSystem::removeDirectory(audiosDir);
+    Ffc::FileSystem::removeFile(outputVideo_NA_Path);
+    return true;
+}
 
 } // namespace Ffc
