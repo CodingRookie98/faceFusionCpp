@@ -284,9 +284,8 @@ bool Core::processVideo(const std::string &videoPath, const std::string &outputV
     std::vector<std::string> framePathsVec(framePaths.begin(), framePaths.end());
 
     auto processors = getFrameProcessors();
-    for (auto processor = processors->begin(); processor != processors->end();) {
+    for (auto processor = processors->begin(); processor != processors->end(); ++processor) {
         (*processor)->processImages(m_config->m_sourcePaths, framePathsVec, framePathsVec);
-        processor = processors->erase(processor);
         m_faceStore->clearStaticFaces();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // Don't remove this line, it will cause a bug
     }
