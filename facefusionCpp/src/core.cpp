@@ -219,30 +219,8 @@ void Core::processImages(std::unordered_set<std::string> imagePaths) {
     m_logger->info(std::format("[Core] All images processed successfully. Output path: {}", FileSystem::resolveRelativePath(m_config->m_outputPath)));
 }
 
-void Core::processImage(const std::string &imagePath,
-                        const std::chrono::time_point<std::chrono::steady_clock> &startTime) {
-    std::string tempPath = FileSystem::getTempPath();
-    const auto &targetImagePath = imagePath;
-    if (FileSystem::copyImageToTemp(targetImagePath, m_config->m_outputImageResolution)) {
-        m_logger->error("[Core] Copy target image to temp path failed.");
         return;
     }
-    auto tempTargetImagePath = tempPath + "/" + FileSystem::getFileName(targetImagePath);
-    for (const auto &processor : *getFrameProcessors()) {
-        processor->processImage(m_config->m_sourcePaths, tempTargetImagePath, tempTargetImagePath);
     }
 
-    std::string normedOutputPath = FileSystem::normalizeOutputPath(targetImagePath, m_config->m_outputPath);
-    if (!FileSystem::finalizeImage(tempTargetImagePath, normedOutputPath, m_config->m_outputImageResolution, m_config->m_outputImageQuality)) {
-        m_logger->warn("[Core] Finalize image skipped");
-        FileSystem::moveFile(tempTargetImagePath, normedOutputPath);
-    } else {
-        FileSystem::removeFile(tempTargetImagePath);
-    }
-    if (FileSystem::isImage(normedOutputPath)) {
-        m_logger->info(std::format("[Core] Process image successfully. Output path: {}", normedOutputPath));
-    } else {
-        m_logger->error("[Core] Process image failed.");
-    }
-}
 } // namespace Ffc

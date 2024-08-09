@@ -32,8 +32,6 @@ public:
     void conditionalProcess();
     bool preCheck() const;
     void processImages(std::unordered_set<std::string> imagePaths);
-    void processImage(const std::string &imagePath,
-                      const std::chrono::time_point<std::chrono::steady_clock> &startTime);
 
 private:
     std::shared_ptr<Ffc::Config> m_config;
