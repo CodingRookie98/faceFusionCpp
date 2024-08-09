@@ -48,12 +48,21 @@ std::vector<std::string> FfmpegRunner::childProcess(const std::string &command) 
 }
 
 bool FfmpegRunner::isVideo(const std::string &videoPath) {
-    static const std::unordered_set<std::string> videoExtensions = {"3gp", "mp4", "m4v", "mkv", "webm", "mov", "avi", "wmv", "mpg", "flv"};
-    std::string extension = bp::filesystem::path(videoPath).extension().string();
-    extension = extension.substr(1);
-    // to lower case
-    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-    return videoExtensions.contains(extension);
+    if (!bp::filesystem::exists(videoPath)) {
+        Logger::getInstance()->error(std::format("{} : {}", __FUNCTION__, "File not found : " + videoPath));
+        return false;
+    }
+
+    std::string jsonInfo = getVideoInfoJson(videoPath);
+    if (jsonInfo.empty()) {
+        Logger::getInstance()->error(std::format("{} : {}", __FUNCTION__, "Failed to get video info : " + videoPath));
+        return false;
+    }
+
+    if (jsonInfo.find(R"("handler_name":"VideoHandler")") != std::string::npos) {
+        return true;
+    }
+    return false;
 }
 
 bool FfmpegRunner::isAudio(const std::string &audioPath) {
