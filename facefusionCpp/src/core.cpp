@@ -84,7 +84,7 @@ void Core::conditionalProcess() {
     }
 
     conditionalAppendReferenceFaces();
-    
+
     m_logger->info("[Core] Filtering images...");
     std::unordered_set<std::string> targetImagePaths = FileSystem::filterImagePaths(m_config->m_targetPaths);
     if (!targetImagePaths.empty()) {
@@ -107,23 +107,34 @@ void Core::conditionalProcess() {
 void Core::createFrameProcessors() {
     if (m_frameProcessors == nullptr) {
         m_frameProcessors = std::make_shared<std::vector<std::shared_ptr<ProcessorBase>>>();
-        for (auto &processor : m_config->m_frameProcessors) {
-            switch (processor) {
-            case Typing::EnumFrameProcessor::FaceSwapper:
-                m_frameProcessors->emplace_back(std::make_shared<Ffc::FaceSwapper>(m_env, m_faceAnalyser, m_faceMasker, m_modelsInfoJson, m_config));
-                break;
-            case Typing::EnumFrameProcessor::FaceEnhancer:
-                m_frameProcessors->emplace_back(std::make_shared<Ffc::FaceEnhancer>(m_env, m_faceAnalyser, m_faceMasker, m_modelsInfoJson, m_config));
-                break;
+    } else {
+        m_frameProcessors->clear();
+    }
+
+    for (const auto &processor : m_config->m_frameProcessors) {
+        switch (processor) {
+        case Typing::EnumFrameProcessor::FaceSwapper:
+            if (m_frameProcessorMap.contains(Typing::EnumFrameProcessor::FaceSwapper)) {
+                m_frameProcessors->emplace_back(m_frameProcessorMap.at(Typing::EnumFrameProcessor::FaceSwapper));
+            } else {
+                m_frameProcessorMap.emplace(Typing::EnumFrameProcessor::FaceSwapper, std::make_shared<Ffc::FaceSwapper>(m_env, m_faceAnalyser, m_faceMasker, m_modelsInfoJson, m_config));
+                m_frameProcessors->emplace_back(m_frameProcessorMap.at(Typing::EnumFrameProcessor::FaceSwapper));
             }
+            break;
+        case Typing::EnumFrameProcessor::FaceEnhancer:
+            if (m_frameProcessorMap.contains(Typing::EnumFrameProcessor::FaceEnhancer)) {
+                m_frameProcessors->emplace_back(m_frameProcessorMap.at(Typing::EnumFrameProcessor::FaceEnhancer));
+            } else {
+                m_frameProcessorMap.emplace(Typing::EnumFrameProcessor::FaceEnhancer, std::make_shared<Ffc::FaceEnhancer>(m_env, m_faceAnalyser, m_faceMasker, m_modelsInfoJson, m_config));
+                m_frameProcessors->emplace_back(m_frameProcessorMap.at(Typing::EnumFrameProcessor::FaceEnhancer));
+            }
+            break;
         }
     }
 }
 
 std::shared_ptr<std::vector<std::shared_ptr<ProcessorBase>>> Core::getFrameProcessors() {
-    if (m_frameProcessors == nullptr) {
-        createFrameProcessors();
-    }
+    createFrameProcessors();
     return m_frameProcessors;
 }
 

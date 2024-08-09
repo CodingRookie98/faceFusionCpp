@@ -43,6 +43,7 @@ private:
     std::shared_ptr<FaceAnalyser> m_faceAnalyser;
     std::shared_ptr<FaceMasker> m_faceMasker;
     std::shared_ptr<std::vector<std::shared_ptr<ProcessorBase>>> m_frameProcessors;
+    std::unordered_map<Typing::EnumFrameProcessor, std::shared_ptr<ProcessorBase>> m_frameProcessorMap;
     std::shared_ptr<FaceStore> m_faceStore = FaceStore::getInstance();
 
     void createFrameProcessors();
