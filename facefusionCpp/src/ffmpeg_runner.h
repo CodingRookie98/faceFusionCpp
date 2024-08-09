@@ -62,7 +62,7 @@ public:
 
     // no audio output
     static bool cutVideoIntoSegments(const std::string &videoPath, const std::string &outputPath,
-                                     int segmentDuration, const std::string &outputPattern);
+                                     const unsigned int &segmentDuration, const std::string &outputPattern);
 
     static bool concatVideoSegments(const std::vector<std::string> &videoSegmentsPaths,
                                     const std::string &outputVideoPath, const VideoPrams &videoPrams);

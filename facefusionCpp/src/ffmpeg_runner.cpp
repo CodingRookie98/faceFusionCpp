@@ -92,7 +92,7 @@ bool FfmpegRunner::hasAudio(const std::string &videoPath) {
 }
 
 bool FfmpegRunner::cutVideoIntoSegments(const std::string &videoPath, const std::string &outputPath,
-                                        int segmentDuration, const std::string &outputPattern) {
+                                        const unsigned int &segmentDuration, const std::string &outputPattern) {
     if (!isVideo(videoPath)) {
         Logger::getInstance()->error(std::format("{} : {}", __FUNCTION__, "Not a video file : " + videoPath));
         return false;
