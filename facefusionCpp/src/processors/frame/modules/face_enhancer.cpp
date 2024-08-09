@@ -253,28 +253,8 @@ bool FaceEnhancer::preCheck() {
 	return true;
 }
 
-bool FaceEnhancer::preProcess(const std::unordered_set<std::string> &processMode) {
+bool FaceEnhancer::preProcess(/*const std::unordered_set<std::string> &processMode*/) {
 	m_logger->info("[FaceEnhancer] pre process");
-	std::unordered_set<std::string> targetPaths = FileSystem::filterImagePaths(m_config->m_targetPaths);
-
-	if (processMode.contains("output") || processMode.contains("preview")) {
-		if (targetPaths.empty()) {
-			m_logger->error("[FaceEnhancer] No target image or video found");
-			return false;
-		}
-	}
-	if (processMode.contains("output")) {
-		for (const auto &targetPath : targetPaths) {
-			std::string outputPath = FileSystem::resolveRelativePath(m_config->m_outputPath);
-			if (!FileSystem::directoryExists(outputPath)) {
-				FileSystem::createDirectory(outputPath);
-			}
-			if (FileSystem::normalizeOutputPath(targetPath, outputPath).empty()) {
-				m_logger->error("[FaceEnhancer] Invalid output path: " + m_config->m_outputPath);
-				return false;
-			}
-		}
-	}
 
 	if (m_faceEnhancerModel == nullptr || *m_faceEnhancerModel != m_config->m_faceEnhancerModel) {
 		if (m_faceEnhancerModel != nullptr && *m_faceEnhancerModel != m_config->m_faceEnhancerModel) {

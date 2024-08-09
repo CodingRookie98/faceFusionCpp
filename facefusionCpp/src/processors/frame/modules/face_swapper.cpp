@@ -422,49 +422,8 @@ bool FaceSwapper::postCheck() {
     return true;
 }
 
-bool FaceSwapper::preProcess(const std::unordered_set<std::string> &processMode) {
+bool FaceSwapper::preProcess() {
     m_logger->info("[FaceSwapper] pre process");
-    std::unordered_set<std::string> sourcePaths = FileSystem::filterImagePaths(m_config->m_sourcePaths);
-    std::unordered_set<std::string> targetPaths = FileSystem::filterImagePaths(m_config->m_targetPaths);
-    if (!FileSystem::hasImage(sourcePaths)) {
-        m_logger->error("[FaceSwapper] No source image found");
-        return false;
-    }
-
-    auto sourceFrames = Vision::readStaticImages(sourcePaths);
-    int noFaces = 0;
-    for (const auto &sourceFrame : sourceFrames) {
-        auto face = m_faceAnalyser->getOneFace(sourceFrame);
-        if (face == nullptr || face->isEmpty()) {
-            noFaces++;
-            m_logger->warn("[FaceSwapper] No face found in one of source images");
-        }
-    }
-    if (noFaces == sourceFrames.size()) {
-        m_logger->error("[FaceSwapper] No face found in all of source images");
-        return false;
-    }
-
-    if (processMode.contains("output") || processMode.contains("preview")) {
-        if (targetPaths.empty()) {
-            m_logger->error("[FaceSwapper] No target image or video found");
-            return false;
-        }
-    }
-
-    if (processMode.contains("output")) {
-        for (const auto &targetPath : targetPaths) {
-            std::string outputPath = FileSystem::resolveRelativePath(m_config->m_outputPath);
-            if (!FileSystem::directoryExists(outputPath)) {
-                m_logger->info("[FaceSwapper] Create output directory: " + outputPath);
-                FileSystem::createDirectory(outputPath);
-            }
-            if (FileSystem::normalizeOutputPath(targetPath, outputPath).empty()) {
-                m_logger->error("[FaceSwapper] Invalid output path: " + m_config->m_outputPath);
-                return false;
-            }
-        }
-    }
 
     if (m_faceSwapperModel == nullptr || *m_faceSwapperModel != m_config->m_faceSwapperModel) {
         if (m_faceSwapperModel != nullptr && *m_faceSwapperModel != m_config->m_faceSwapperModel) {

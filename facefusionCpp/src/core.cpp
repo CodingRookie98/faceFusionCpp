@@ -81,7 +81,7 @@ void Core::conditionalProcess() {
         while (!processor->postCheck()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
-        processor->preProcess({"output"});
+        processor->preProcess();
     }
 
     conditionalAppendReferenceFaces();
@@ -94,6 +94,11 @@ void Core::conditionalProcess() {
     if (targetImagePaths.size() == m_config->m_targetPaths.size()) {
         return;
     }
+
+    m_logger->info("[Core] Filtering videos...");
+    std::unordered_set<std::string> targetVideoPaths = FfmpegRunner::filterVideoPaths(m_config->m_targetPaths);
+    if (!targetVideoPaths.empty()) {
+        processVideos(targetVideoPaths);
     }
     
     FileSystem::removeDirectory(FileSystem::getTempPath());
@@ -185,7 +190,14 @@ void Core::processImages(std::unordered_set<std::string> imagePaths) {
         auto tempTargetImagePath = tempPath + "/" + FileSystem::getFileName(targetImagePath);
         tempTargetImagePaths.emplace_back(tempTargetImagePath);
     }
-    normedOutputPaths = FileSystem::normalizeOutputPaths(tempTargetImagePaths, m_config->m_outputPath);
+    std::string outputPath = FileSystem::resolveRelativePath(m_config->m_outputPath);
+    
+    if (!FileSystem::directoryExists(outputPath) && targetImagePaths.size() > 1) {
+        m_logger->info("[Core] Create output directory: " + outputPath);
+        FileSystem::createDirectory(outputPath);
+    }
+    
+    normedOutputPaths = FileSystem::normalizeOutputPaths(tempTargetImagePaths, outputPath);
     targetImagePaths.clear();
 
     auto processors = getFrameProcessors();
