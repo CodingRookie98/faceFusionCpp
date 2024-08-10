@@ -24,13 +24,6 @@ namespace Ffc {
 namespace bp = boost::process;
 class FfmpegRunner {
 public:
-    enum AV_Codec {
-        Codec_H264,
-        Codec_H265,
-        Codec_VP9,
-        Codec_H264_NVENC,
-        Codec_HEVC_NVENC,
-    };
     enum Audio_Codec {
         Codec_AAC,
         Codec_MP3,
