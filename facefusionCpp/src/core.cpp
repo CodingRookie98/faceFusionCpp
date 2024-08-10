@@ -268,6 +268,7 @@ void Core::processVideos(std::unordered_set<std::string> videoPaths) {
                 m_logger->info(std::format("[Core] Process video {}/{} successfully. Output path: {}", i + 1, targetVideoPaths.size(), normedOutputPaths[i]));
             }
         }
+        FileSystem::removeFile(tempTargetVideoPaths[i]);
     }
 }
 
