@@ -48,21 +48,13 @@ std::vector<std::string> FfmpegRunner::childProcess(const std::string &command) 
 }
 
 bool FfmpegRunner::isVideo(const std::string &videoPath) {
-    if (!bp::filesystem::exists(videoPath)) {
-        Logger::getInstance()->error(std::format("{} : {}", __FUNCTION__, "File not found : " + videoPath));
+    cv::VideoCapture cap(videoPath);
+    if (!cap.isOpened()) {
+        Logger::getInstance()->error(std::format("{} : {}", __FUNCTION__, "Failed to open video file : " + videoPath));
         return false;
     }
-
-    std::string jsonInfo = getVideoInfoJson(videoPath);
-    if (jsonInfo.empty()) {
-        Logger::getInstance()->error(std::format("{} : {}", __FUNCTION__, "Failed to get video info : " + videoPath));
-        return false;
-    }
-
-    if (jsonInfo.find(R"("handler_name":"VideoHandler")") != std::string::npos) {
-        return true;
-    }
-    return false;
+    cap.release();
+    return true;
 }
 
 bool FfmpegRunner::isAudio(const std::string &audioPath) {

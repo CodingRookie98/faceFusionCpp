@@ -17,6 +17,7 @@
 #include <fstream>
 #include <unordered_set>
 #include <nlohmann/json.hpp>
+#include <opencv2/opencv.hpp>
 #include "logger.h"
 
 namespace Ffc {
