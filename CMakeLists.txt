@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(faceFusionCpp VERSION 0.1.0 DESCRIPTION "This project is the C++ version of the open-source project FaceFusion.")
+project(faceFusionCpp VERSION 0.1.1 DESCRIPTION "This project is the C++ version of the open-source project FaceFusion.")
 
 set(CMAKE_CXX_STANDARD 20)
 
