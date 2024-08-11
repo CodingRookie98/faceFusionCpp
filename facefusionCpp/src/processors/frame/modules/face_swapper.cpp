@@ -118,7 +118,7 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
                 ++i;
                 continue;
             }
-            
+
             auto writeIsSuccess = writeImageResults[i].get();
             if (!writeIsSuccess) {
                 isAllWriteSuccess = false;
@@ -128,7 +128,7 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
             bar.setPostfixText(std::format("{}/{}", (i + 1), numTargetPaths));
             int progress = static_cast<int>(std::floor(((float)(i + 1) * 100.0f) / (float)numTargetPaths));
             bar.setProgress(progress);
-            
+
             ++i;
             if (i >= outputPaths.size()) {
                 break;
@@ -136,7 +136,7 @@ void FaceSwapper::processImages(const std::unordered_set<std::string> &sourcePat
         }
     }
     show_console_cursor(true);
-    if(!isAllWriteSuccess) {
+    if (!isAllWriteSuccess) {
         m_logger->error("[FaceSwapper] Some images failed to process or write.");
     }
 }
