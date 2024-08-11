@@ -76,6 +76,7 @@ bool FfmpegRunner::isAudio(const std::string &audioPath) {
     
     for (size_t i = 0; i < formatContext->nb_streams; ++i) {
         if (formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+            avformat_close_input(&formatContext);
             return true;
         }
     }
