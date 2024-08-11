@@ -87,12 +87,16 @@ void Config::frameProcessors() {
     // frame_processors
     std::string value = m_ini.GetValue("frame_processors", "frame_processors", "face_swapper");
     if (!value.empty()) {
+        bool flag = false;
         if (value.find("face_swapper") != std::string::npos) {
             m_frameProcessors.emplace_back(Typing::EnumFrameProcessor::FaceSwapper);
+            flag = true;
         }
         if (value.find("face_enhancer") != std::string::npos) {
             m_frameProcessors.emplace_back(Typing::EnumFrameProcessor::FaceEnhancer);
-        } else {
+            flag = true;
+        }
+        if (!flag){
             m_logger->warn("[Config] The user-specified frame processors are not supported; using the default: face_swapper.");
             m_frameProcessors.emplace_back(Typing::EnumFrameProcessor::FaceSwapper);
         }
