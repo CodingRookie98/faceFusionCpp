@@ -30,6 +30,11 @@ find_package(OpenSSL REQUIRED)
 find_package(thread-pool CONFIG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS process)
 
+find_package(FFMPEG REQUIRED)
+target_include_directories(${ProgramName} PRIVATE ${FFMPEG_INCLUDE_DIRS})
+target_link_directories(${ProgramName} PRIVATE ${FFMPEG_LIBRARY_DIRS})
+target_link_libraries(${ProgramName} PRIVATE ${FFMPEG_LIBRARIES})
+
 target_include_directories(${ProgramName} PRIVATE ${SIMPLEINI_INCLUDE_DIRS})
 target_link_directories(${ProgramName} PRIVATE ${VCPKG_INSTALLED_DIR}/x64-windows/lib)
 target_link_libraries(${ProgramName} PRIVATE ${OpenCV_LIBS})
