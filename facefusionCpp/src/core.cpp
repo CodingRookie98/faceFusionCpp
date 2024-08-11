@@ -189,18 +189,18 @@ void Core::processImages(std::unordered_set<std::string> imagePaths) {
     std::vector<std::string> normedOutputPaths;
 
     std::string tempPath = FileSystem::getTempPath();
+    std::vector<std::string> tempTargetImagePaths;
+    for (const auto &targetImagePath : targetImagePaths) {
+        auto tempImagePath = tempPath + "/images/" + FileSystem::getFileName(targetImagePath);
+        tempTargetImagePaths.emplace_back(tempImagePath);
+    }
 
     m_logger->info("[Core] Coping images to temp...");
-    if (!FileSystem::copyImagesToTemp(targetImagePaths, m_config->m_outputImageResolution)) {
+    if (!FileSystem::copyImages(targetImagePaths, tempTargetImagePaths, m_config->m_outputImageResolution)) {
         m_logger->error("[Core] Copy target images to temp path failed.");
         return;
     }
-
-    std::vector<std::string> tempTargetImagePaths;
-    for (const auto &targetImagePath : targetImagePaths) {
-        auto tempTargetImagePath = tempPath + "/" + FileSystem::getFileName(targetImagePath);
-        tempTargetImagePaths.emplace_back(tempTargetImagePath);
-    }
+    
     std::string outputPath = FileSystem::resolveRelativePath(m_config->m_outputPath);
 
     if (!FileSystem::directoryExists(outputPath)) {

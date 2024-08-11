@@ -50,9 +50,9 @@ public:
     static std::string getFileName(const std::string &filePath);
     static std::string getExtension(const std::string &filePath);
     static std::string getBaseName(const std::string &filePath);
-    static bool copyImageToTemp(const std::string &imagePath, const cv::Size &size = cv::Size(0, 0));
+    static bool copyImage(const std::string &imagePath, const std::string &destination, const cv::Size &size = cv::Size(0, 0));
     // use multi-threading to copy images to temp
-    static bool copyImagesToTemp(const std::vector<std::string> &imagePaths, const cv::Size &size = cv::Size(0, 0));
+    static bool copyImages(const std::vector<std::string> &imagePaths, const std::vector<std::string> &destinations, const cv::Size &size = cv::Size(0, 0));
     static bool finalizeImage(const std::string &imagePath, const std::string &outputPath, const cv::Size &size = cv::Size(0, 0), const int &outputImageQuality = 100);
     static bool finalizeImages(const std::vector<std::string> &imagePaths, const std::vector<std::string> &outputPaths, const cv::Size &size = cv::Size(0, 0), const int &outputImageQuality = 100);
     static std::string generateRandomString(const size_t &length);

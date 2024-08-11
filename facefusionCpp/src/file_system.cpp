@@ -173,7 +173,7 @@ std::string FileSystem::getBaseName(const std::string &filePath) {
     return pathObj.stem().string();
 }
 
-bool FileSystem::copyImageToTemp(const std::string &imagePath, const cv::Size &size) {
+bool FileSystem::copyImage(const std::string &imagePath, const std::string &destination, const cv::Size &size) {
     // 读取输入图片
     cv::Mat inputImage = cv::imread(imagePath, cv::IMREAD_UNCHANGED);
     if (inputImage.empty()) {
@@ -182,8 +182,10 @@ bool FileSystem::copyImageToTemp(const std::string &imagePath, const cv::Size &s
     }
 
     // 获取临时文件路径
-    std::filesystem::path tempFilePath = getTempPath() + "/" + getFileName(imagePath);
-    tempFilePath.replace_extension(std::filesystem::path(imagePath).extension());
+    std::filesystem::path destinationPath = destination;
+    if (!directoryExists(destinationPath.parent_path().string())) {
+        createDirectory(destinationPath.parent_path().string());
+    }
 
     // 调整图片尺寸
     cv::Mat resizedImage;
@@ -195,19 +197,19 @@ bool FileSystem::copyImageToTemp(const std::string &imagePath, const cv::Size &s
     if (outputSize.width != inputImage.size().width || outputSize.height != inputImage.size().height) {
         cv::resize(inputImage, resizedImage, outputSize);
     } else {
-        if (tempFilePath.extension() != ".webp") {
-            copyFile(imagePath, tempFilePath.string());
+        if (destinationPath.extension() != ".webp") {
+            copyFile(imagePath, destinationPath.string());
             return true;
         }
         resizedImage = inputImage;
     }
 
-    if (tempFilePath.extension() == ".webp") {
+    if (destinationPath.extension() == ".webp") {
         // 设置保存参数，默认无压缩
         std::vector<int> compressionParams;
         compressionParams.push_back(cv::IMWRITE_WEBP_QUALITY);
         compressionParams.push_back(100); // 设置WebP压缩质量
-        if (!cv::imwrite(tempFilePath.string(), resizedImage, compressionParams)) {
+        if (!cv::imwrite(destinationPath.string(), resizedImage, compressionParams)) {
             return false;
         }
     }
@@ -215,14 +217,25 @@ bool FileSystem::copyImageToTemp(const std::string &imagePath, const cv::Size &s
     return true;
 }
 
-bool FileSystem::copyImagesToTemp(const std::vector<std::string> &imagePaths, const cv::Size &size) {
+bool FileSystem::copyImages(const std::vector<std::string> &imagePaths, const std::vector<std::string> &destinations, const cv::Size &size) {
+    if (imagePaths.size() != destinations.size()) {
+        std::cerr << __FUNCTION__ << " The number of image paths and destinations must be equal." << std::endl;
+        return false;
+    }
+    if (imagePaths.empty() || destinations.empty()) {
+        std::cerr << __FUNCTION__ << " No image paths or destination paths provided." << std::endl;
+        return false;
+    }
+    
     // use multi-thread
     dp::thread_pool pool(std::thread::hardware_concurrency());
 
     std::vector<std::future<bool>> futures;
-    for (const auto &imagePath : imagePaths) {
-        futures.emplace_back(pool.enqueue([imagePath, size]() {
-            return copyImageToTemp(imagePath, size);
+    for (size_t i = 0; i < imagePaths.size(); ++i) {
+        std::string imagePath = imagePaths[i];
+        std::string destination = destinations[i];
+        futures.emplace_back(pool.enqueue([imagePath, destination, size]() {
+            return copyImage(imagePath, destination, size);
         }));
     }
     for (auto &future : futures) {
