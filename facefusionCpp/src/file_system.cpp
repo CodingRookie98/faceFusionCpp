@@ -145,7 +145,10 @@ bool FileSystem::directoryExists(const std::string &path) {
 
 void FileSystem::createDirectory(const std::string &path) {
     if (!directoryExists(path)) {
-        std::filesystem::create_directory(path);
+        std::error_code ec;
+        if(!std::filesystem::create_directories(path, ec)){
+            std::cerr << __FUNCTION__ << "Failed to create directory: " + path + " Error: " + ec.message();
+        }
     }
 }
 
@@ -318,7 +321,7 @@ void FileSystem::removeDirectory(const std::string &path) {
     try {
         std::filesystem::remove_all(path);
     } catch (const std::filesystem::filesystem_error &e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        std::cerr << __FUNCTION__ << " Error: " << e.what() << std::endl;
     }
 }
 
