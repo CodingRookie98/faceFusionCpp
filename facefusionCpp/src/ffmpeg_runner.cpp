@@ -58,11 +58,28 @@ bool FfmpegRunner::isVideo(const std::string &videoPath) {
 }
 
 bool FfmpegRunner::isAudio(const std::string &audioPath) {
-    std::string command = "ffprobe -select_streams a:0 -show_entries stream=codec_type -of default=noprint_wrappers=1:nokey=1 " + audioPath;
-    std::vector<std::string> results = childProcess(command);
-    return std::ranges::any_of(results, [](const std::string &result) {
-        return result.find("audio") != std::string::npos;
-    });
+    if (!bp::filesystem::exists(audioPath)) {
+        Logger::getInstance()->error(std::format("{} : {}", __FUNCTION__, "Not a audio file : " + audioPath));
+        return false;
+    }
+    
+     AVFormatContext *formatContext = avformat_alloc_context();
+    if (avformat_open_input(&formatContext, audioPath.c_str(), nullptr, nullptr) != 0) {
+        std::cerr << "Could not open input file." << std::endl;
+        return false;
+    }
+
+    if (avformat_find_stream_info(formatContext, nullptr) < 0) {
+        std::cerr << "Could not find stream information." << std::endl;
+        return false;
+    }
+    
+    for (size_t i = 0; i < formatContext->nb_streams; ++i) {
+        if (formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+            return true;
+        }
+    }
+    avformat_close_input(&formatContext);
     return false;
 }
 
@@ -81,15 +98,6 @@ void FfmpegRunner::extractFrames(const std::string &videoPath, const std::string
     if (!results.empty()) {
         Logger::getInstance()->error(std::format("{} : {}", __FUNCTION__, std::accumulate(results.begin(), results.end(), std::string())));
     }
-}
-
-bool FfmpegRunner::hasAudio(const std::string &videoPath) {
-    std::string command = "ffprobe -select_streams a:0 -show_entries stream=codec_type -of default=noprint_wrappers=1:nokey=1 " + videoPath;
-    std::vector<std::string> results = childProcess(command);
-    return std::ranges::any_of(results, [](const std::string &result) {
-        return result.find("audio") != std::string::npos;
-    });
-    return false;
 }
 
 bool FfmpegRunner::cutVideoIntoSegments(const std::string &videoPath, const std::string &outputPath,
@@ -130,6 +138,7 @@ void FfmpegRunner::extractAudios(const std::string &videoPath, const std::string
     std::string audioCodecStr;
     std::string extension;
     switch (audioCodec) {
+    case Codec_UNKNOWN:
     case FfmpegRunner::Audio_Codec::Codec_AAC:
         audioCodecStr = "aac";
         extension = ".aac";
@@ -160,27 +169,33 @@ void FfmpegRunner::extractAudios(const std::string &videoPath, const std::string
     }
 }
 
-std::unordered_map<int, std::string> FfmpegRunner::getAudioStreamsIndexAndCodec(const std::string &videoPath) {
+std::unordered_map<unsigned int, std::string> FfmpegRunner::getAudioStreamsIndexAndCodec(const std::string &videoPath) {
     if (!isVideo(videoPath)) {
         Logger::getInstance()->error("Not a video file : " + videoPath);
         return {};
     }
-    std::string command = "ffprobe -v error -select_streams a -show_entries stream=index,codec_name -of default=noprint_wrappers=1:nokey=1 " + videoPath;
-    std::vector<std::string> results = childProcess(command);
-    if (results.size() % 2 != 0) {
-        Logger::getInstance()->error("Failed to get audio streams");
+
+    AVFormatContext *formatContext = avformat_alloc_context();
+    if (avformat_open_input(&formatContext, videoPath.c_str(), nullptr, nullptr) != 0) {
+        std::cerr << "Could not open input file." << std::endl;
         return {};
     }
 
-    // 解析结果
-    std::unordered_map<int, std::string> audioStreams;
-    for (size_t i = 0; i < results.size(); i += 2) {
-        int index = std::stoi(results[i]);
-        std::string codec = results[i + 1];
-        audioStreams[index] = codec;
+    if (avformat_find_stream_info(formatContext, nullptr) < 0) {
+        std::cerr << "Could not find stream information." << std::endl;
+        return {};
     }
-
-    return audioStreams;
+    
+    std::unordered_map<unsigned int, std::string> results;
+    for (size_t i = 0; i < formatContext->nb_streams; ++i) {
+        if (formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+            std::string codecName = avcodec_get_name(formatContext->streams[i]->codecpar->codec_id);
+            results.emplace(i, codecName);
+        }
+    }
+    avformat_close_input(&formatContext);
+    
+    return results;
 }
 
 bool FfmpegRunner::concatVideoSegments(const std::vector<std::string> &videoSegmentsPaths,
@@ -217,17 +232,16 @@ bool FfmpegRunner::concatVideoSegments(const std::vector<std::string> &videoSegm
         listFile << "file '" << videoSegmentPath << "'" << std::endl;
     }
     listFile.close();
-    std::string r_frame_rate = videoPrams.r_frame_rate;
-    std::string avg_frame_rate = videoPrams.avg_frame_rate;
+    std::string frameRate = std::to_string(videoPrams.frameRate);
     std::string outputRes = std::to_string(videoPrams.width) + "x" + std::to_string(videoPrams.height);
 
     std::string command;
-    command = "ffmpeg -v error -f concat -safe 0 -r " + r_frame_rate + " -i " + listVideoFilePath + " -s " + outputRes + " -c:v " + videoPrams.videoCodec + " ";
+    command = "ffmpeg -v error -f concat -safe 0 -r " + frameRate + " -i " + listVideoFilePath + " -s " + outputRes + " -c:v " + videoPrams.videoCodec + " ";
     command += getCompressionAndPresetCmd(videoPrams.quality, videoPrams.preset, videoPrams.videoCodec);
     if (bp::filesystem::is_directory(outputVideoPath)) {
-        command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + avg_frame_rate + " " + outputVideoPath + "/output.mp4";
+        command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + frameRate + " " + outputVideoPath + "/output.mp4";
     } else {
-        command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + avg_frame_rate + " " + outputVideoPath;
+        command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + frameRate + " " + outputVideoPath;
     }
 
     std::vector<std::string> results = childProcess(command);
@@ -272,7 +286,7 @@ bool FfmpegRunner::addAudiosToVideo(const std::string &videoPath,
         return false;
     }
     if (!bp::filesystem::exists(bp::filesystem::path(outputVideoPath).parent_path().string())) {
-        bp::filesystem::create_directory(outputVideoPath);
+        bp::filesystem::create_directory(bp::filesystem::path(outputVideoPath).parent_path().string());
     }
 
     if (audioPaths.empty()) {
@@ -317,14 +331,13 @@ bool FfmpegRunner::imagesToVideo(const std::string &inputImagePattern,
         bp::filesystem::create_directory(bp::filesystem::path(outputVideoPath).parent_path());
     }
 
-    std::string r_frame_rate = videoPrams.r_frame_rate;
-    std::string avg_frame_rate = videoPrams.avg_frame_rate;
+    std::string frameRate = std::to_string(videoPrams.frameRate);
     std::string codec = videoPrams.videoCodec;
     std::string outputRes = std::to_string(videoPrams.width) + "x" + std::to_string(videoPrams.height);
 
-    std::string command = "ffmpeg -v error -r " + r_frame_rate + " -i " + inputImagePattern + " -s " + outputRes + " -c:v " + codec + " ";
+    std::string command = "ffmpeg -v error -r " + frameRate + " -i " + inputImagePattern + " -s " + outputRes + " -c:v " + codec + " ";
     command += getCompressionAndPresetCmd(videoPrams.quality, videoPrams.preset, codec);
-    command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + avg_frame_rate + " " + outputVideoPath;
+    command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + frameRate + " " + outputVideoPath;
 
     std::vector<std::string> results = childProcess(command);
     if (!results.empty()) {
@@ -369,53 +382,7 @@ std::string FfmpegRunner::map_amf_preset(const std::string &preset) {
     }
 }
 
-bool FfmpegRunner::getVideoInfoJsonFile(const std::string &videoPath, std::string &videoInfoJsonFilePath) {
-    if (!isVideo(videoPath)) {
-        Logger::getInstance()->error("Not a video file : " + videoPath);
-        return false;
-    }
-    if (bp::filesystem::is_directory(videoInfoJsonFilePath)) {
-        Logger::getInstance()->error("Output path is a directory : " + videoInfoJsonFilePath);
-        return false;
-    }
-    if (bp::filesystem::exists(videoInfoJsonFilePath) && bp::filesystem::is_regular_file(videoInfoJsonFilePath)) {
-        bp::filesystem::remove(videoInfoJsonFilePath);
-    }
-
-    std::string jsonInfo = getVideoInfoJson(videoPath);
-    if (!jsonInfo.empty()) {
-        // write results to videoInfoJsonFilePath
-        std::ofstream videoInfoJson(videoInfoJsonFilePath);
-        if (!videoInfoJson.is_open()) {
-            Logger::getInstance()->error(std::format("{} : Failed to open file : {}", __FUNCTION__, videoInfoJsonFilePath));
-            return false;
-        }
-        videoInfoJson << jsonInfo;
-        videoInfoJson.close();
-    } else {
-        Logger::getInstance()->error(std::format("{} : jsonInfo is empty.", __FUNCTION__));
-        return false;
-    }
-    return true;
-}
-
-std::string FfmpegRunner::getVideoInfoJson(const std::string &videoPath) {
-    std::string command = "ffprobe -v error -print_format json -show_format -show_streams -i " + videoPath;
-    std::vector<std::string> results = childProcess(command);
-    if (!results.empty()) {
-        if (results[0] != "{") {
-            std::string error = std::accumulate(results.begin(), results.end(), std::string());
-            Logger::getInstance()->error(error);
-            Logger::getInstance()->error(std::format("{} : Failed to get video info json : {}", __FUNCTION__, command));
-            return {};
-        }
-        return std::accumulate(results.begin(), results.end(), std::string());
-    }
-    return {};
-}
-
 std::string FfmpegRunner::getCompressionAndPresetCmd(const unsigned int &quality, const std::string &preset, const std::string &codec) {
-    // ffmpeg -v error -i input.mp4 -c:v libx264 -crf 23 -preset medium -c:a copy output.mp4
     if (codec == "libx264" || codec == "libx265") {
         int crf = (int)std::round(51 - (float)(quality * 0.51));
         return "-crf " + std::to_string(crf) + " -preset " + preset;
@@ -431,6 +398,7 @@ std::string FfmpegRunner::getCompressionAndPresetCmd(const unsigned int &quality
     }
     return {};
 }
+
 FfmpegRunner::Audio_Codec FfmpegRunner::getAudioCodec(const std::string &codec) {
     if (codec == "aac") {
         return Audio_Codec::Codec_AAC;
@@ -446,34 +414,15 @@ FfmpegRunner::Audio_Codec FfmpegRunner::getAudioCodec(const std::string &codec) 
     }
 }
 
-void FfmpegRunner::VideoPrams::setPrams(const std::unordered_map<std::string, std::any> &mapPrams) {
-    for (const auto &[key, value] : mapPrams) {
-        if (key == "width") {
-            width = std::any_cast<int>(value);
-        } else if (key == "height") {
-            height = std::any_cast<int>(value);
-        } else if (key == "videoCodec") {
-            videoCodec = std::any_cast<std::string>(value);
-        } else if (key == "r_frame_rate") {
-            r_frame_rate = std::any_cast<std::string>(value);
-        } else if (key == "avg_frame_rate") {
-            avg_frame_rate = std::any_cast<std::string>(value);
-        } else if (key == "quality") {
-            quality = std::any_cast<unsigned int>(value);
-        } else if (key == "preset") {
-            preset = std::any_cast<std::string>(value);
-        }
-    }
-}
-
-void FfmpegRunner::VideoPrams::setPramsFromJson(const nlohmann::json &jsonPrams) {
-    if (jsonPrams.empty()) {
-        Logger::getInstance()->error("jsonPrams is empty");
+FfmpegRunner::VideoPrams::VideoPrams(const std::string &videoPath) {
+    cv::VideoCapture cap(videoPath);
+    if (!cap.isOpened()) {
+        Logger::getInstance()->error(std::format("{} : Failed to open video : {}", __FUNCTION__, videoPath));
         return;
     }
-    r_frame_rate = jsonPrams["streams"].at(0)["r_frame_rate"].get<std::string>();
-    avg_frame_rate = jsonPrams["streams"].at(0)["avg_frame_rate"].get<std::string>();
-    width = jsonPrams["streams"].at(0)["width"].get<int>();
-    height = jsonPrams["streams"].at(0)["height"].get<int>();
+    width = (int)cap.get(cv::CAP_PROP_FRAME_WIDTH);
+    height = (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+    frameRate = cap.get(cv::CAP_PROP_FPS);
+    cap.release();
 }
 } // namespace Ffc

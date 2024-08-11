@@ -238,8 +238,10 @@ void Core::processVideos(std::unordered_set<std::string> videoPaths) {
     std::vector<std::string> targetVideoPaths(videoPaths.begin(), videoPaths.end());
     std::vector<std::string> tempTargetVideoPaths;
     for (const auto &targetVideoPath : targetVideoPaths) {
-        std::string tempTargetVideoDir = FileSystem::getTempPath() + "/" + FileSystem::getBaseName(targetVideoPath) + "-" + FileSystem::generateRandomString(8);
-        while (FileSystem::directoryExists(tempTargetVideoDir)) {}
+        std::string tempTargetVideoDir = FileSystem::getTempPath() + "/videos/" + FileSystem::getBaseName(targetVideoPath);
+        while (FileSystem::directoryExists(tempTargetVideoDir)) {
+            tempTargetVideoDir += "-" + FileSystem::generateRandomString(8);
+        }
         std::string tempTargetVideoPath = tempTargetVideoDir + "/" + FileSystem::getFileName(targetVideoPath);
         tempTargetVideoPaths.emplace_back(tempTargetVideoPath);
     }
@@ -302,21 +304,7 @@ bool Core::processVideo(const std::string &videoPath, const std::string &outputV
         std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // Don't remove this line, it will cause a bug
     }
 
-    std::string videoInfoJsonPath = pathVideo.parent_path().string() + "/" + Ffc::FileSystem::getBaseName(videoPath) + ".json";
-    if (!Ffc::FfmpegRunner::getVideoInfoJsonFile(videoPath, videoInfoJsonPath)) {
-        Ffc::Logger::getInstance()->error(std::format("[Core] Failed to get file: {}", videoInfoJsonPath));
-        FileSystem::removeDirectory(videoFramesOutputDir);
-        return false;
-    }
-    nlohmann::json videoInfoJson;
-    std::ifstream videoInfoJsonFile(videoInfoJsonPath);
-    if (videoInfoJsonFile.is_open()) {
-        videoInfoJsonFile >> videoInfoJson;
-    }
-    videoInfoJsonFile.close();
-
-    Ffc::FfmpegRunner::VideoPrams videoPrams;
-    videoPrams.setPramsFromJson(videoInfoJson);
+    Ffc::FfmpegRunner::VideoPrams videoPrams(videoPath);
     videoPrams.quality = m_config->m_outputVideoQuality;
     videoPrams.preset = m_config->m_outputVideoPreset;
     videoPrams.videoCodec = m_config->m_outputVideoEncoder;
@@ -327,7 +315,6 @@ bool Core::processVideo(const std::string &videoPath, const std::string &outputV
     if (!Ffc::FfmpegRunner::imagesToVideo(inputImagePattern, outputVideo_NA_Path, videoPrams)) {
         Ffc::Logger::getInstance()->error("[Core] images to video failed!");
         FileSystem::removeDirectory(videoFramesOutputDir);
-        FileSystem::removeFile(videoInfoJsonPath);
         FileSystem::removeFile(outputVideo_NA_Path);
         return false;
     }
@@ -341,7 +328,6 @@ bool Core::processVideo(const std::string &videoPath, const std::string &outputV
         Ffc::Logger::getInstance()->warn("[Core] Add audios to Video failed. The output video will be without audio.");
     }
 
-    Ffc::FileSystem::removeFile(videoInfoJsonPath);
     Ffc::FileSystem::removeDirectory(videoFramesOutputDir);
     Ffc::FileSystem::removeDirectory(audiosDir);
     Ffc::FileSystem::removeFile(outputVideo_NA_Path);
@@ -396,23 +382,9 @@ bool Core::processVideoInSegments(const std::string &videoPath, const std::strin
             std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // Don't remove this line, it will cause a bug
         }
 
-        std::string videoInfoJsonPath = std::filesystem::path(videoSegmentPath).parent_path().string() + "/" + Ffc::FileSystem::getBaseName(videoSegmentPath) + ".json";
-        if (!Ffc::FfmpegRunner::getVideoInfoJsonFile(videoSegmentPath, videoInfoJsonPath)) {
-            Ffc::Logger::getInstance()->error(std::format("[Core] Failed to get file: {}", videoInfoJsonPath));
-            FileSystem::removeDirectory(videoSegmentsDir);
-            return false;
-        }
-        nlohmann::json videoInfoJson;
-        std::ifstream videoInfoJsonFile(videoInfoJsonPath);
-        if (videoInfoJsonFile.is_open()) {
-            videoInfoJsonFile >> videoInfoJson;
-        }
-        videoInfoJsonFile.close();
-
         std::string outputVideoSegmentPath = processedVideoSegmentsDir + "/" + Ffc::FileSystem::getFileName(videoSegmentPath);
         const std::string &inputImagePattern = outputPattern;
-        Ffc::FfmpegRunner::VideoPrams videoPrams;
-        videoPrams.setPramsFromJson(videoInfoJson);
+        Ffc::FfmpegRunner::VideoPrams videoPrams(videoSegmentPath);
         videoPrams.quality = m_config->m_outputVideoQuality;
         videoPrams.preset = m_config->m_outputVideoPreset;
         videoPrams.videoCodec = m_config->m_outputVideoEncoder;
@@ -423,34 +395,17 @@ bool Core::processVideoInSegments(const std::string &videoPath, const std::strin
         } else {
             Ffc::Logger::getInstance()->error("[Core] images to video failed!");
             FileSystem::removeDirectory(videoSegmentsDir);
-            FileSystem::removeFile(videoInfoJsonPath);
             FileSystem::removeDirectory(videoFramesOutputDir);
             FileSystem::removeDirectory(processedVideoSegmentsDir);
             return false;
         }
 
         Ffc::FileSystem::removeFile(videoSegmentPath);
-        Ffc::FileSystem::removeFile(videoInfoJsonPath);
         Ffc::FileSystem::removeDirectory(videoFramesOutputDir);
     }
     Ffc::FileSystem::removeDirectory(videoSegmentsDir);
 
-    std::string originVideoJsonPath = pathVideo.parent_path().string() + "/" + Ffc::FileSystem::getBaseName(videoPath) + ".json";
-    if (!Ffc::FfmpegRunner::getVideoInfoJsonFile(videoPath, originVideoJsonPath)) {
-        Ffc::Logger::getInstance()->error(std::format("[Core] Failed to get file: {}", originVideoJsonPath));
-        FileSystem::removeDirectory(processedVideoSegmentsDir);
-        return false;
-    }
-
-    nlohmann::json originVideoJson;
-    std::ifstream originVideoJsonFile(originVideoJsonPath);
-    if (originVideoJsonFile.is_open()) {
-        originVideoJsonFile >> originVideoJson;
-    }
-    originVideoJsonFile.close();
-
-    Ffc::FfmpegRunner::VideoPrams videoPrams;
-    videoPrams.setPramsFromJson(originVideoJson);
+    Ffc::FfmpegRunner::VideoPrams videoPrams(videoPath);
     videoPrams.quality = m_config->m_outputVideoQuality;
     videoPrams.preset = m_config->m_outputVideoPreset;
     videoPrams.videoCodec = m_config->m_outputVideoEncoder;
@@ -475,7 +430,6 @@ bool Core::processVideoInSegments(const std::string &videoPath, const std::strin
 
     Ffc::FileSystem::removeDirectory(audiosDir);
     Ffc::FileSystem::removeFile(outputVideo_NA_Path);
-    Ffc::FileSystem::removeFile(originVideoJsonPath);
     Ffc::FileSystem::removeDirectory(processedVideoSegmentsDir);
     return true;
 }
