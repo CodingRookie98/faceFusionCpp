@@ -353,7 +353,7 @@ void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePa
 	bar.setPostfixText(std::format("{}/{}", 0, targetPaths.size()));
 	bar.setProgress(0);
 	int i = 0;
-	static bool isAllWriteSuccess = true;
+	bool isAllWriteSuccess = true;
 	while (true) {
 		if (writeImageResults.size() <= i) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -373,7 +373,7 @@ void FaceEnhancer::processImages(const std::unordered_set<std::string> &sourcePa
 			}
 
 			bar.setPostfixText(std::format("{}/{}", (i + 1), numTargetPaths));
-			int progress = static_cast<int>(std::round(((i + 1) * 100.0f) / numTargetPaths));
+			int progress = static_cast<int>(std::floor(((float)(i + 1) * 100.0f) / (float)numTargetPaths));
 			bar.setProgress(progress);
 
 			++i;
