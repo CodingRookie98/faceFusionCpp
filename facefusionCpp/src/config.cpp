@@ -39,7 +39,7 @@ void Config::loadConfig() {
     faceAnalyser();
     faceSelector();
     faceMasker();
-    outputCreation();
+    image();
     video();
     frameProcessors();
 
@@ -167,9 +167,9 @@ void Config::frameProcessors() {
         m_faceSwapperModel = Typing::EnumFaceSwapperModel::FSM_Inswapper_128_fp16;
     }
 }
-void Config::outputCreation() {
+void Config::image() {
     // output_creation
-    std::string value = m_ini.GetValue("output_creation", "output_image_quality", "80");
+    std::string value = m_ini.GetValue("image", "output_image_quality", "80");
     if (!value.empty()) {
         m_outputImageQuality = std::stoi(value);
         if (m_outputImageQuality < 0) {
@@ -180,7 +180,7 @@ void Config::outputCreation() {
     } else {
         m_outputImageQuality = 80;
     }
-    value = m_ini.GetValue("output_creation", "output_image_resolution", "");
+    value = m_ini.GetValue("image", "output_image_resolution", "");
     if (!value.empty()) {
         m_outputImageResolution = Vision::unpackResolution(value);
     } else {

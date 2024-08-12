@@ -116,7 +116,7 @@ private:
     void faceAnalyser();
     void faceSelector();
     void faceMasker();
-    void outputCreation();
+    void image();
     void video();
     void frameProcessors();
 };
