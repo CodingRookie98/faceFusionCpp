@@ -147,7 +147,7 @@ void FileSystem::createDirectory(const std::string &path) {
     if (!directoryExists(path)) {
         std::error_code ec;
         if(!std::filesystem::create_directories(path, ec)){
-            std::cerr << __FUNCTION__ << "Failed to create directory: " + path + " Error: " + ec.message();
+            std::cerr << __FUNCTION__ << " Failed to create directory: " + path + " Error: " + ec.message() << std::endl;
         }
     }
 }
