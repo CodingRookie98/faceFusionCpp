@@ -9,6 +9,8 @@ If you are using GPU acceleration, please install the CUDA environment. If Tenso
 >   **CUDNN >= 9.2 (tested)**
 
 >   **TensorRT >= 10.2 (tested) (if enabled)**
+>
+>   **ffmpeg >= 7.0.2 (tested)(for video)**
 
 
 
