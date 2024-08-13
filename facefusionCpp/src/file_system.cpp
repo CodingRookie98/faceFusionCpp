@@ -66,6 +66,8 @@ std::unordered_set<std::string> FileSystem::listFilesInDirectory(const std::stri
         }
     } catch (const std::filesystem::filesystem_error &e) {
         std::cerr << "Error: " << e.what() << std::endl;
+    } catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
     }
 
     return filePaths;
