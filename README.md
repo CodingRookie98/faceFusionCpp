@@ -11,10 +11,9 @@ Please download the packaged program from the [Release]() page (currently availa
 Additional environment requirements:
 
 > - CUDA >= 12.2 (tested with CUDA 12.5)
->
 > - CUDNN >= 9.2 (tested)
->
 > - TensorRT >= 10.2 (tested) (if enabled)
+> - ffmpeg >= 7.0.2 (tested)(for video)
 
 ## Features
 
