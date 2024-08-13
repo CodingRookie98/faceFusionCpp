@@ -22,6 +22,7 @@
 #include "config.h"
 #include "logger.h"
 #include "face_store.h"
+#include "metadata.h"
 
 namespace Ffc {
 class Core {

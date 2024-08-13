@@ -52,6 +52,7 @@ void Core::forceDownload() {
 
 void Core::run() {
     m_logger->setLogLevel(m_config->m_logLevel);
+    m_logger->info(MetaData::name + " version: " + MetaData::version + " " + MetaData::url);
     auto removeTempFunc = []() {
         FileSystem::removeDirectory(FileSystem::getTempPath());
     };

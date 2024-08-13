@@ -25,6 +25,7 @@ target_sources(${ProgramName} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/progress_bar.h
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_runner.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_runner.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/metadata.h
 )
 
 target_include_directories(${ProgramName} PRIVATE
