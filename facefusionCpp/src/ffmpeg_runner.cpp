@@ -98,7 +98,7 @@ void FfmpegRunner::extractFrames(const std::string &videoPath, const std::string
         bp::filesystem::create_directory(bp::filesystem::path(outputImagePattern).parent_path());
     }
 
-    std::string command = "ffmpeg -v error -i " + videoPath + " -q:v 0 -vsync 0 " + outputImagePattern;
+    std::string command = "ffmpeg -v error -i \"" + videoPath + "\" -q:v 0 -vsync 0 \"" + outputImagePattern + "\"";
     std::vector<std::string> results = childProcess(command);
     if (!results.empty()) {
         Logger::getInstance()->error(std::format("{} : {}", __FUNCTION__, std::accumulate(results.begin(), results.end(), std::string())));
@@ -116,7 +116,7 @@ bool FfmpegRunner::cutVideoIntoSegments(const std::string &videoPath, const std:
     }
 
     std::string durationStr = std::to_string(segmentDuration);
-    std::string command = "ffmpeg -v error -i " + videoPath + " -c:v copy -an -f segment -segment_time " + durationStr + " -reset_timestamps 1 -y " + outputPath + "/" + outputPattern;
+    std::string command = "ffmpeg -v error -i \"" + videoPath + "\" -c:v copy -an -f segment -segment_time " + durationStr + " -reset_timestamps 1 -y \"" + outputPath + "/" + outputPattern + "\"";
     std::vector<std::string> results = childProcess(command);
     if (!results.empty()) {
         Logger::getInstance()->error(std::format("{} : {}", __FUNCTION__, std::accumulate(results.begin(), results.end(), std::string())));
@@ -127,7 +127,6 @@ bool FfmpegRunner::cutVideoIntoSegments(const std::string &videoPath, const std:
 
 void FfmpegRunner::extractAudios(const std::string &videoPath, const std::string &outputDir,
                                  const FfmpegRunner::Audio_Codec &audioCodec) {
-    // ffmpeg -i input.mp4 -vn -acodec copy output.aac
     if (!isVideo(videoPath)) {
         Logger::getInstance()->error("Not a video file : " + videoPath);
         return;
@@ -166,7 +165,7 @@ void FfmpegRunner::extractAudios(const std::string &videoPath, const std::string
 
     for (const auto &audioStreamInfo : audioStreamsInfo) {
         std::string index = std::to_string(audioStreamInfo.first);
-        std::string command = "ffmpeg -v error -i " + videoPath + " -map 0:" + index + " -c:a " + audioCodecStr + " -vn -y " + outputDir + "/audio_" + index + extension;
+        std::string command = "ffmpeg -v error -i \"" + videoPath + "\" -map 0:" + index + " -c:a " + audioCodecStr + " -vn -y \"" + outputDir + "/audio_" + index + extension + "\"";
         std::vector<std::string> results = childProcess(command);
         if (!results.empty()) {
             Logger::getInstance()->error(std::format("{} Failed to extract audio : {}", __FUNCTION__, command));
@@ -241,12 +240,12 @@ bool FfmpegRunner::concatVideoSegments(const std::vector<std::string> &videoSegm
     std::string outputRes = std::to_string(videoPrams.width) + "x" + std::to_string(videoPrams.height);
 
     std::string command;
-    command = "ffmpeg -v error -f concat -safe 0 -r " + frameRate + " -i " + listVideoFilePath + " -s " + outputRes + " -c:v " + videoPrams.videoCodec + " ";
+    command = "ffmpeg -v error -f concat -safe 0 -r " + frameRate + " -i \"" + listVideoFilePath + "\" -s " + outputRes + " -c:v " + videoPrams.videoCodec + " ";
     command += getCompressionAndPresetCmd(videoPrams.quality, videoPrams.preset, videoPrams.videoCodec);
     if (bp::filesystem::is_directory(outputVideoPath)) {
-        command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + frameRate + " " + outputVideoPath + "/output.mp4";
+        command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + frameRate + " \"" + outputVideoPath + "/output.mp4\"";
     } else {
-        command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + frameRate + " " + outputVideoPath;
+        command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + frameRate + " \"" + outputVideoPath + "\"";
     }
 
     std::vector<std::string> results = childProcess(command);
@@ -300,15 +299,15 @@ bool FfmpegRunner::addAudiosToVideo(const std::string &videoPath,
         return true;
     }
 
-    std::string command = "ffmpeg -v error -i " + videoPath;
+    std::string command = "ffmpeg -v error -i \"" + videoPath + "\"";
     for (const auto &audioPath : audioPaths) {
-        command += " -i " + audioPath;
+        command += " -i \"" + audioPath + "\"";
     }
     command += " -map 0:v:0";
     for (size_t i = 0; i < audioPaths.size(); ++i) {
         command += " -map " + std::to_string(i + 1) + ":a:0";
     }
-    command += " -c:v copy -c:a copy -shortest -y " + outputVideoPath;
+    command += " -c:v copy -c:a copy -shortest -y \"" + outputVideoPath + "\"";
     std::vector<std::string> results = childProcess(command);
     if (!results.empty()) {
         Logger::getInstance()->error("Failed to add audios to video : " + command);
@@ -340,9 +339,9 @@ bool FfmpegRunner::imagesToVideo(const std::string &inputImagePattern,
     std::string codec = videoPrams.videoCodec;
     std::string outputRes = std::to_string(videoPrams.width) + "x" + std::to_string(videoPrams.height);
 
-    std::string command = "ffmpeg -v error -r " + frameRate + " -i " + inputImagePattern + " -s " + outputRes + " -c:v " + codec + " ";
+    std::string command = "ffmpeg -v error -r " + frameRate + " -i \"" + inputImagePattern + "\" -s " + outputRes + " -c:v " + codec + " ";
     command += getCompressionAndPresetCmd(videoPrams.quality, videoPrams.preset, codec);
-    command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + frameRate + " " + outputVideoPath;
+    command += " -pix_fmt yuv420p -colorspace bt709 -y -r " + frameRate + " \"" + outputVideoPath + "\"";
 
     std::vector<std::string> results = childProcess(command);
     if (!results.empty()) {
