@@ -210,7 +210,8 @@ std::shared_ptr<Typing::VisionFrame> FaceSwapper::applySwap(const Face &sourceFa
         auto boxMask = FaceMasker::createStaticBoxMask(std::get<0>(*croppedTargetFrameAndAffineMat).size(),
                                                        m_config->m_faceMaskBlur, m_config->m_faceMaskPadding);
         cropMasks.push_back(std::move(*boxMask));
-    } else if (m_config->m_faceMaskTypeSet.contains(Typing::EnumFaceMaskerType::FM_Occlusion)) {
+    }
+    if (m_config->m_faceMaskTypeSet.contains(Typing::EnumFaceMaskerType::FM_Occlusion)) {
         auto occlusionMask = m_faceMasker->createOcclusionMask(std::get<0>(*croppedTargetFrameAndAffineMat));
         cropMasks.push_back(std::move(*occlusionMask));
     }
