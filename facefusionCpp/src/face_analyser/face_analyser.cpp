@@ -392,9 +392,9 @@ FaceAnalyser::filterByGender(std::shared_ptr<Typing::Faces> faces, const EnumFac
 
     for (auto it = faces->begin(); it != faces->end();) {
         if (FaceHelper::categorizeGender(it->gender) == gender) {
-            it = faces->erase(it);
-        } else {
             ++it;
+        } else {
+            it = faces->erase(it);
         }
     }
     return faces;

@@ -42,7 +42,7 @@ public:
 
     bool preCheck() override;
     bool postCheck() override;
-    bool preProcess(const std::unordered_set<std::string> &processMode) override;
+    bool preProcess() override;
     Typing::VisionFrame getReferenceFrame(const Typing::Face &sourceFace,
                                           const Typing::Face &targetFace,
                                           const Typing::VisionFrame &tempVisionFrame) override;

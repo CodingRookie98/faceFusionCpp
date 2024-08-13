@@ -83,6 +83,15 @@ public:
     // output creation
     int m_outputImageQuality;
     cv::Size m_outputImageResolution;
+    
+    // video
+    unsigned int m_videoSegmentDuration;
+    std::string m_outputVideoEncoder;
+    std::string m_outputVideoPreset;
+    unsigned int m_outputVideoQuality;
+    std::string m_outputAudioEncoder;
+    bool m_skipAudio;
+    std::string m_tempFrameFormat;
 
     // Frame Processors
     std::vector<Typing::EnumFrameProcessor> m_frameProcessors;
@@ -107,7 +116,8 @@ private:
     void faceAnalyser();
     void faceSelector();
     void faceMasker();
-    void outputCreation();
+    void image();
+    void video();
     void frameProcessors();
 };
 

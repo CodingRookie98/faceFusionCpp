@@ -25,7 +25,7 @@ public:
 
     virtual bool preCheck() = 0;
     virtual bool postCheck() = 0;
-    virtual bool preProcess(const std::unordered_set<std::string> &processMode) = 0;
+    virtual bool preProcess() = 0;
     virtual Typing::VisionFrame getReferenceFrame(const Typing::Face &sourceFace,
                                                   const Typing::Face &targetFace,
                                                   const Typing::VisionFrame &tempVisionFrame) = 0;

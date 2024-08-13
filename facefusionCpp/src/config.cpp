@@ -39,7 +39,8 @@ void Config::loadConfig() {
     faceAnalyser();
     faceSelector();
     faceMasker();
-    outputCreation();
+    image();
+    video();
     frameProcessors();
 
     if (m_faceSwapperModel == Typing::EnumFaceSwapperModel::FSM_Blendswap_256) {
@@ -86,12 +87,16 @@ void Config::frameProcessors() {
     // frame_processors
     std::string value = m_ini.GetValue("frame_processors", "frame_processors", "face_swapper");
     if (!value.empty()) {
+        bool flag = false;
         if (value.find("face_swapper") != std::string::npos) {
             m_frameProcessors.emplace_back(Typing::EnumFrameProcessor::FaceSwapper);
+            flag = true;
         }
         if (value.find("face_enhancer") != std::string::npos) {
             m_frameProcessors.emplace_back(Typing::EnumFrameProcessor::FaceEnhancer);
-        } else {
+            flag = true;
+        }
+        if (!flag){
             m_logger->warn("[Config] The user-specified frame processors are not supported; using the default: face_swapper.");
             m_frameProcessors.emplace_back(Typing::EnumFrameProcessor::FaceSwapper);
         }
@@ -162,9 +167,9 @@ void Config::frameProcessors() {
         m_faceSwapperModel = Typing::EnumFaceSwapperModel::FSM_Inswapper_128_fp16;
     }
 }
-void Config::outputCreation() {
+void Config::image() {
     // output_creation
-    std::string value = m_ini.GetValue("output_creation", "output_image_quality", "80");
+    std::string value = m_ini.GetValue("image", "output_image_quality", "100");
     if (!value.empty()) {
         m_outputImageQuality = std::stoi(value);
         if (m_outputImageQuality < 0) {
@@ -173,9 +178,9 @@ void Config::outputCreation() {
             m_outputImageQuality = 100;
         }
     } else {
-        m_outputImageQuality = 80;
+        m_outputImageQuality = 100;
     }
-    value = m_ini.GetValue("output_creation", "output_image_resolution", "");
+    value = m_ini.GetValue("image", "output_image_resolution", "");
     if (!value.empty()) {
         m_outputImageResolution = Vision::unpackResolution(value);
     } else {
@@ -431,38 +436,38 @@ void Config::faceAnalyser() {
 
 void Config::general() {
     // general
-    std::string value = m_ini.GetValue("general", "source_dir_or_path", "");
+    std::string value = m_ini.GetValue("general", "source_path", "");
     if (!value.empty()) {
-        if (FileSystem::fileExists(value) && FileSystem::isFile(value) && FileSystem::isImage(value)) {
+        if (FileSystem::fileExists(value) && FileSystem::isFile(value)) {
             m_sourcePaths.insert(value);
         } else if (FileSystem::isDirectory(value)) {
             m_sourcePaths = FileSystem::listFilesInDirectory(value);
             if (m_sourcePaths.empty()) {
-                m_logger->warn("[Config] source_dir_or_path is an empty directory.");
+                m_logger->warn("[Config] source_path is an empty directory.");
             } else {
                 m_sourcePaths = FileSystem::filterImagePaths(m_sourcePaths);
                 if (m_sourcePaths.empty()) {
-                    m_logger->warn("[Config] source_dir_or_path does not contain any valid image files.");
+                    m_logger->warn("[Config] source_path does not contain any valid image files.");
                 }
             }
         } else {
-            m_logger->warn("[Config] source_dir_or_path is not a valid path or directory.");
+            m_logger->warn("[Config] source_path is not a valid path or directory.");
         }
     } else {
-        m_logger->warn("[Config] source_dir_or_path is not set.");
+        m_logger->warn("[Config] source_path is not set.");
     }
-    value = m_ini.GetValue("general", "target_dir_or_path", "");
+    value = m_ini.GetValue("general", "target_path", "");
     if (!value.empty()) {
         if (FileSystem::fileExists(value) && FileSystem::isFile(value)) {
             m_targetPaths.insert(value);
         } else if (FileSystem::isDirectory(value)) {
             m_targetPaths = FileSystem::listFilesInDirectory(value);
         } else {
-            m_logger->error("[Config] target_dir_or_path is not a valid path or directory.");
+            m_logger->error("[Config] target_path is not a valid path or directory.");
             std::exit(1);
         }
     } else {
-        m_logger->error("[Config] target_dir_or_path is not set.");
+        m_logger->error("[Config] target_path is not set.");
         std::exit(1);
     }
 
@@ -478,12 +483,12 @@ void Config::general() {
         m_referenceFacePath = "";
     }
 
-    value = m_ini.GetValue("general", "output_dir_or_path", "./output");
+    value = m_ini.GetValue("general", "output_path", "./output");
     if (!value.empty()) {
         m_outputPath = FileSystem::resolveRelativePath(value);
     } else {
         m_outputPath = FileSystem::resolveRelativePath("./output");
-        m_logger->warn("[Config] output_dir_or_path is not set. Use default: ./output");
+        m_logger->warn("[Config] output_path is not set. Use default: ./output");
     }
 }
 
@@ -572,7 +577,7 @@ void Config::execution() {
             m_executionProviders.insert(Typing::EnumExecutionProvider::EP_TensorRT);
             flag = true;
         }
-        if (!flag){
+        if (!flag) {
             m_logger->warn("[Config] Invalid execution_providers: " + value + " Use default: cpu");
             m_executionProviders.insert(Typing::EnumExecutionProvider::EP_CPU);
         }
@@ -630,6 +635,96 @@ void Config::memory() {
         }
     } else {
         m_perSessionGpuMemLimit = 0;
+    }
+}
+
+void Config::video() {
+    std::string value = m_ini.GetValue("video", "video_segment_duration", "0");
+    if (!value.empty()) {
+        m_videoSegmentDuration = std::stoi(value);
+        if (m_videoSegmentDuration < 0) {
+            m_videoSegmentDuration = 0;
+        }
+    } else {
+        m_videoSegmentDuration = 0;
+    }
+
+    value = m_ini.GetValue("video", "output_video_encoder", "libx264");
+    const std::unordered_set<std::string> encoders = {"libx264", "libx265", "libvpx-vp9", "h264_nvenc", "hevc_nvenc", "h264_amf", "hevc_amf"};
+    if (!value.empty()) {
+        if (encoders.contains(value)) {
+            m_outputVideoEncoder = value;
+        } else {
+            m_logger->warn("[Config] Invalid output_video_encoder: " + value + " Use default: libx264");
+            m_outputVideoEncoder = "libx264";
+        }
+    } else {
+        m_outputVideoEncoder = "libx264";
+    }
+
+    value = m_ini.GetValue("video", "output_video_preset", "veryfast");
+    const std::unordered_set<std::string> presets = {"ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"};
+    if (!value.empty()) {
+        if (presets.contains(value)) {
+            m_outputVideoPreset = value;
+        } else {
+            m_logger->warn("[Config] Invalid output_video_preset: " + value + " Use default: veryfast");
+            m_outputVideoPreset = "veryfast";
+        }
+    } else {
+        m_outputVideoPreset = "veryfast";
+    }
+
+    value = m_ini.GetValue("video", "output_video_quality", "80");
+    if (!value.empty()) {
+        m_outputVideoQuality = std::stoi(value);
+        if (m_outputVideoQuality < 0) {
+            m_outputVideoQuality = 0;
+        } else if (m_outputVideoQuality > 100) {
+            m_outputVideoQuality = 100;
+        }
+    } else {
+        m_outputVideoQuality = 80;
+    }
+
+    value = m_ini.GetValue("video", "output_audio_encoder", "aac");
+    const std::unordered_set<std::string> audioEncoders = {"aac", "libmp3lame", "libopus", "libvorbis"};
+    if (!value.empty()) {
+        if (audioEncoders.contains(value)) {
+            m_outputAudioEncoder = value;
+        } else {
+            m_logger->warn("[Config] Invalid output_audio_encoder: " + value + " Use default: aac");
+            m_outputAudioEncoder = "aac";
+        }
+    } else {
+        m_outputAudioEncoder = "aac";
+    }
+    
+    value = m_ini.GetValue("video", "skip_audio", "false");
+    if (!value.empty()) {
+        if (value == "true") {
+            m_skipAudio = true;
+        } else if (value == "false") {
+            m_skipAudio = false;
+        } else {
+            m_logger->warn("[Config] Invalid skip_audio: " + value + " Use default: false");
+            m_skipAudio = false;
+        }
+    } else {
+        m_skipAudio = false;
+    }
+    
+    value = m_ini.GetValue("video", "temp_frame_format", "png");
+    const std::unordered_set<std::string> formats = {"png", "jpg", "bmp"};
+    if (!value.empty()) {
+        if (formats.contains(value)) {
+            m_tempFrameFormat = value;
+        } else {
+            m_logger->warn("[Config] Invalid temp_frame_format: " + value + " Use default: png");
+            m_tempFrameFormat = "png";
+        }
+    } else {
+        m_tempFrameFormat = "png";
     }
 }
 
