@@ -26,7 +26,7 @@ Additional environment requirements:
 
 ## Next
 
-- [ ] Video support
+- [x] Video support
 
 ## Documentation
 

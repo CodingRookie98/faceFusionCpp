@@ -16,7 +16,7 @@ If you are using GPU acceleration, please install the CUDA environment. If Tenso
 
 ### general
 
-#### source_dir_or_path
+#### source_path
 
 Source path, **currently supports images only**. Accepts a string that can be either a single file path or a directory path containing multiple files.
 
@@ -24,7 +24,7 @@ Source path, **currently supports images only**. Accepts a string that can be ei
 >
 >   The source path is not required when performing facial enhancement only.
 
-   #### target_dir_or_path
+#### target_path
 
  Target path, **currently supports images only**. Accepts a string that can be either a single file path or a directory path containing multiple files.
 
@@ -32,7 +32,7 @@ Source path, **currently supports images only**. Accepts a string that can be ei
 
 Path to the reference face, **currently supports images only**. Accepts a string; currently supports only a single image, with future plans to support multiple images as input.
 
-#### output_dir_or_path
+#### output_path
 
 Path for storing output files, supports both file paths and directory paths, with directory paths recommended.
 
@@ -297,14 +297,14 @@ Example: left-eye right-eye eye-glasses
 
 
 
-### output_creation
+### image
 
 #### output_image_quality
 
 Specify the image quality which translates to the compression factor.
 
 ```
-Default: 80
+Default: 100
 Range: 0 to 100 at 1
 Example: 60
 ```
@@ -316,6 +316,82 @@ Specify the image output resolution based on the target image.
 ```
 Default: None
 Example: 1920x1080
+```
+
+
+
+### video
+
+#### video_segment_duration
+
+If this configuration item is greater than 0, the target video will be cut into multiple segments for processing. The duration of each segment will be the value of this item, in seconds.
+
+```
+default: 0
+example: 30
+```
+
+>   [!TIP]
+>
+>   When processing long videos, it's recommended to handle them in segments. This approach can reduce memory and disk usage, although it may slightly decrease processing speed.
+
+#### output_video_encoder
+
+Specify the encoder used for the video output.
+
+```
+Default: libx264
+Choices: libx264 libx265 libvpx-vp9 h264_nvenc hevc_nvenc h264_amf hevc_amf
+Example: libx265
+```
+
+#### output_video_preset
+
+Balance fast video processing and video file size.
+
+```
+Default: veryfast
+Choices: ultrafast superfast veryfast faster fast medium slow slower veryslow
+Example: faster
+```
+
+#### output_video_quality
+
+Specify the video quality which translates to the compression factor.
+
+```
+Default: 80
+Range: 0 to 100 at 1
+Example: 60
+```
+
+#### output_audio_encoder
+
+Specify the encoder used for the audio output.
+
+```
+Default: aac
+Choices: aac libmp3lame libopus libvorbis
+Example: libmp3lame
+```
+
+#### skip_audio
+
+Omit the audio from the target video.
+
+```
+Default: false
+choice: true false
+Example: true
+```
+
+#### temp_frame_format
+
+Specify the format in which the extracted video frames should be stored as images.
+
+```
+default: png
+choice: png jpg bmp
 ```
 
 
