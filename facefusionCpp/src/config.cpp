@@ -169,7 +169,7 @@ void Config::frameProcessors() {
 }
 void Config::image() {
     // output_creation
-    std::string value = m_ini.GetValue("image", "output_image_quality", "80");
+    std::string value = m_ini.GetValue("image", "output_image_quality", "100");
     if (!value.empty()) {
         m_outputImageQuality = std::stoi(value);
         if (m_outputImageQuality < 0) {
@@ -178,7 +178,7 @@ void Config::image() {
             m_outputImageQuality = 100;
         }
     } else {
-        m_outputImageQuality = 80;
+        m_outputImageQuality = 100;
     }
     value = m_ini.GetValue("image", "output_image_resolution", "");
     if (!value.empty()) {
