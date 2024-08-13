@@ -144,6 +144,8 @@ bool FileSystem::directoryExists(const std::string &path) {
 }
 
 void FileSystem::createDirectory(const std::string &path) {
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lock(mutex);
     if (!directoryExists(path)) {
         std::error_code ec;
         if(!std::filesystem::create_directories(path, ec)){
