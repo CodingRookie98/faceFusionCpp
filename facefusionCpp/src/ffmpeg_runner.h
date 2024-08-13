@@ -29,6 +29,7 @@ extern "C" {
 #include <unordered_set>
 #include <opencv2/opencv.hpp>
 #include "logger.h"
+#include "file_system.h"
 
 namespace Ffc {
 namespace bp = boost::process;

@@ -48,6 +48,10 @@ std::vector<std::string> FfmpegRunner::childProcess(const std::string &command) 
 }
 
 bool FfmpegRunner::isVideo(const std::string &videoPath) {
+    if (FileSystem::isImage(videoPath)) {
+        return false;
+    }
+    
     cv::VideoCapture cap(videoPath);
     if (!cap.isOpened()) {
         Logger::getInstance()->error(std::format("{} : {}", __FUNCTION__, "Failed to open video file : " + videoPath));
